@@ -23,7 +23,7 @@ function ChapterEditor({
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <button
               type="button"
-              className="mt-7 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#d1d5db] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+              className="mt-7 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#d1d5db] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
               aria-label={isExpanded ? 'Contraer capitulo' : 'Expandir capitulo'}
               aria-expanded={isExpanded}
               onClick={() => setIsExpanded((current) => !current)}
@@ -42,7 +42,7 @@ function ChapterEditor({
                 Nombre del capitulo
               </span>
               <input
-                className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2.5 text-sm font-semibold text-[#111827] outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+                className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2.5 text-sm font-semibold text-[#111827] outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
                 value={chapter.name}
                 onChange={(event) => onChangeName(event.target.value)}
               />
@@ -51,7 +51,7 @@ function ChapterEditor({
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="rounded-md border border-[#d8dfdb] bg-[#f8faf9] px-3 py-2 text-sm text-[#33443d]">
-              <span className="font-semibold text-[#C62828]">
+              <span className="font-semibold text-[var(--brand-navy)]">
                 {chapter.items.length}
               </span>{' '}
               partidas
@@ -102,7 +102,7 @@ function ChapterEditor({
           <div className="border-t border-[#e3e8e5] p-4 sm:p-5">
             <Button
               icon={Plus}
-              className="bg-[#C62828] hover:bg-[#B71C1C]"
+              className="bg-[var(--brand-navy)] hover:bg-[var(--brand-navy-dark)]"
               onClick={onAddItem}
             >
               Añadir partida

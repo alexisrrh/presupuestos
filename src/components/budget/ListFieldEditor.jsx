@@ -31,7 +31,7 @@ function ListFieldEditor({ label, onChange, value }) {
         <span className="text-sm font-medium text-[#33443d]">{label}</span>
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-md border border-[#d1d5db] px-2 py-1 text-xs font-semibold text-[#111827] hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+          className="inline-flex items-center gap-1 rounded-md border border-[#d1d5db] px-2 py-1 text-xs font-semibold text-[#111827] hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
           onClick={addItem}
         >
           <Plus size={14} aria-hidden="true" />
@@ -42,7 +42,7 @@ function ListFieldEditor({ label, onChange, value }) {
         {items.map((item, index) => (
           <div key={index} className="flex gap-2">
             <input
-              className="min-w-0 flex-1 rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+              className="min-w-0 flex-1 rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-sm text-[#111827] outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
               value={item}
               onChange={(event) => updateItem(index, event.target.value)}
             />

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
+import { COMPANY_NAME, LOGO_ISOTYPE } from '../../config/branding'
 import Header from './Header'
 import Sidebar from './Sidebar'
 
@@ -47,14 +48,19 @@ function AppLayout({
             <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:hidden">
               <button
                 type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#d8dfdb] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#d8dfdb] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
                 aria-label={isSidebarOpen ? 'Cerrar menu' : 'Abrir menu'}
                 onClick={() => setIsSidebarOpen((current) => !current)}
               >
                 {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
-              <span className="text-sm font-semibold tracking-[0.18em] text-[#111827]">
-                PRITECA
+              <img
+                src={LOGO_ISOTYPE}
+                alt={`${COMPANY_NAME} isotipo`}
+                className="h-10 w-10 rounded-md bg-white object-contain p-1"
+              />
+              <span className="text-sm font-semibold tracking-[0.14em] text-[#111827]">
+                {COMPANY_NAME}
               </span>
             </div>
           </div>

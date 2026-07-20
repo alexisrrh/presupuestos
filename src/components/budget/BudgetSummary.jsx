@@ -4,10 +4,10 @@ import { calculateBudgetTotals, formatCurrency } from '../../utils/budgetCalcula
 function SummaryLine({ label, value, strong = false }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <span className={strong ? 'font-semibold text-[#C62828]' : 'text-[#60706a]'}>
+      <span className={strong ? 'font-semibold text-[var(--brand-navy)]' : 'text-[#60706a]'}>
         {label}
       </span>
-      <span className={strong ? 'font-semibold text-[#C62828]' : 'font-medium text-[#111827]'}>
+      <span className={strong ? 'font-semibold text-[var(--brand-navy)]' : 'font-medium text-[#111827]'}>
         {value}
       </span>
     </div>
@@ -58,7 +58,7 @@ function BudgetSummary({ chapters, discountPercent, ivaPercent, onChange }) {
 
         <div className="border-t border-[#e3e8e5] pt-4">
           <p className="text-sm font-semibold uppercase text-[#60706a]">TOTAL</p>
-          <p className="mt-1 text-3xl font-bold text-[#C62828]">
+          <p className="mt-1 text-3xl font-bold text-[var(--brand-navy)]">
             {formatCurrency(totals.total)}
           </p>
         </div>

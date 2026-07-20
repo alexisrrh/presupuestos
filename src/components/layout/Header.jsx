@@ -1,6 +1,6 @@
 import { CalendarDays, LogOut, Save } from 'lucide-react'
+import { COMPANY_NAME, LOGO_HORIZONTAL } from '../../config/branding'
 import PdfExportMenu from '../ui/PdfExportMenu'
-import pritecaLogo from '../../assets/priteca-logo.png'
 
 const getCurrentDate = () => {
   const now = new Date()
@@ -11,7 +11,7 @@ const getCurrentDate = () => {
 function Header({
   activePage,
   budgetSnapshot,
-  companyName = 'PRITECA',
+  companyName = COMPANY_NAME,
   logoSrc,
   pdfStatus,
   onGeneratePdf,
@@ -22,7 +22,7 @@ function Header({
   title,
 }) {
   const isBudgetPage = activePage === 'new-budget'
-  const currentLogo = logoSrc || pritecaLogo
+  const currentLogo = logoSrc || LOGO_HORIZONTAL
   const generalData = budgetSnapshot?.generalData || {}
   const budgetName = generalData.projectName || generalData.number || 'Sin nombre'
   const budgetDate = generalData.date || getCurrentDate()
@@ -38,10 +38,10 @@ function Header({
       <div className="px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-20 shrink-0 items-center sm:h-11 sm:w-28">
+            <div className="flex h-10 w-28 shrink-0 items-center sm:h-12 sm:w-36">
               <img
                 src={currentLogo}
-                alt="PRITECA"
+                alt={`${companyName} logo`}
                 className="h-full w-full object-contain object-left"
               />
             </div>
@@ -67,7 +67,7 @@ function Header({
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-[#d1d5db] bg-white px-3 py-2 text-sm font-semibold text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-[#d1d5db] bg-white px-3 py-2 text-sm font-semibold text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
               aria-label="Guardar borrador"
               disabled={!isBudgetPage || saveStatus === 'saving'}
               onClick={onSaveDraft}
@@ -83,7 +83,7 @@ function Header({
             />
             <button
               type="button"
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-[#d1d5db] bg-white px-3 py-2 text-sm font-semibold text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-[#d1d5db] bg-white px-3 py-2 text-sm font-semibold text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
               aria-label="Cerrar sesion"
               onClick={onSignOut}
             >

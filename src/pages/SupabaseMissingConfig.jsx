@@ -1,11 +1,15 @@
-import pritecaLogo from '../assets/priteca-logo.png'
+import { COMPANY_NAME, LOGO_HORIZONTAL } from '../config/branding'
 import { missingSupabaseEnv } from '../lib/supabaseClient'
 
 function SupabaseMissingConfig() {
   return (
     <main className="flex min-h-svh items-center justify-center bg-[#f5f7f6] px-4 py-10">
       <section className="w-full max-w-xl rounded-md border border-[#e5e7eb] bg-white p-6 shadow-sm">
-        <img src={pritecaLogo} alt="PRITECA" className="h-14 w-40 object-contain" />
+        <img
+          src={LOGO_HORIZONTAL}
+          alt={`${COMPANY_NAME} logo`}
+          className="h-16 w-52 object-contain"
+        />
         <h1 className="mt-6 text-2xl font-semibold text-[#111827]">
           Falta configurar Supabase
         </h1>

@@ -69,7 +69,7 @@ function Login({ onNavigate }) {
 
         <button
           type="submit"
-          className="inline-flex w-full items-center justify-center rounded-md bg-[#C62828] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2 disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center rounded-md bg-[var(--brand-navy)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-navy-dark)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2 disabled:opacity-60"
           disabled={isSubmitting}
         >
           {isSubmitting ? 'Iniciando...' : 'Iniciar sesion'}
@@ -77,7 +77,7 @@ function Login({ onNavigate }) {
       </form>
 
       <div className="mt-5 flex flex-col gap-2 text-center text-sm">
-        <button className="text-[#C62828] hover:underline" type="button" onClick={() => onNavigate('register')}>
+        <button className="text-[var(--brand-navy)] hover:underline" type="button" onClick={() => onNavigate('register')}>
           Crear cuenta
         </button>
         <button className="text-[#6b7280] hover:text-[#111827] hover:underline" type="button" onClick={() => onNavigate('forgot-password')}>

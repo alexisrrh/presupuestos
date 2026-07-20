@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { LOGO_HORIZONTAL } from '../../config/branding'
 import {
   isUuid,
   mapBudgetFromRows,
@@ -33,6 +34,7 @@ describe('budgetMappers', () => {
 
     expect(settings.name).toBe('Empresa')
     expect(settings.defaultVat).toBe(10)
+    expect(settings.logo).toBe(LOGO_HORIZONTAL)
     expect(settings.logoUrl).toBe('organizations/1/logo.png')
   })
 

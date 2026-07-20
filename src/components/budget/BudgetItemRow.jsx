@@ -8,7 +8,7 @@ function BudgetItemRow({ item, onChange, onDuplicate, onRemove }) {
     <tr className="border-t border-[#e3e8e5] transition-colors duration-150 hover:bg-[#f8faf9]">
       <td className="min-w-72 px-3 py-3 align-top">
         <input
-          className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-sm outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+          className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
           value={item.description}
           placeholder="Descripcion de la partida"
           onChange={(event) => onChange('description', event.target.value)}
@@ -16,7 +16,7 @@ function BudgetItemRow({ item, onChange, onDuplicate, onRemove }) {
       </td>
       <td className="min-w-28 px-3 py-3 align-top">
         <input
-          className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-right text-sm outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+          className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-right text-sm outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
           min="0"
           step="0.01"
           type="number"
@@ -26,7 +26,7 @@ function BudgetItemRow({ item, onChange, onDuplicate, onRemove }) {
       </td>
       <td className="min-w-28 px-3 py-3 align-top">
         <select
-          className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-sm outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+          className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
           value={item.unit}
           onChange={(event) => onChange('unit', event.target.value)}
         >
@@ -39,7 +39,7 @@ function BudgetItemRow({ item, onChange, onDuplicate, onRemove }) {
       </td>
       <td className="min-w-36 px-3 py-3 align-top">
         <input
-          className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-right text-sm outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+          className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2 text-right text-sm outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
           min="0"
           step="0.01"
           type="number"
@@ -54,7 +54,7 @@ function BudgetItemRow({ item, onChange, onDuplicate, onRemove }) {
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#ccd6d1] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#ccd6d1] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
             aria-label="Duplicar partida"
             onClick={onDuplicate}
           >

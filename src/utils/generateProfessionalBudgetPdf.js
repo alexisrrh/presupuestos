@@ -1,13 +1,25 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import pritecaLogo from '../assets/priteca-logo.png'
-import { companyData } from '../data/companyData'
+import { COMPANY_NAME } from '../config/branding'
 import { pritecaMethod } from '../data/pritecaMethod'
 import {
   calculateItemTotal,
   formatCurrency,
   toNumber,
 } from './budgetCalculations'
+import {
+  drawCorporateHeaderFooter,
+  drawImageContained,
+  drawKeyValueGrid,
+  drawParagraph,
+  drawSectionTitle,
+  ensurePdfSpace,
+  loadLogoWithFallback,
+  normalizePdfSettings,
+  pdfColors,
+  pdfPage,
+} from './pdfBranding'
+import { formatPdfDate, safeText } from './pdfHelpers'
 import {
   buildProfessionalPdfFileName,
   combinePartialValues,
@@ -17,191 +29,164 @@ import {
   getProfessionalProjectTitle,
   mergeProfessionalDefaults,
 } from './professionalBudgetHelpers'
-import { filterFilledRows, formatPdfDate, safeText } from './pdfHelpers'
 
-const colors = {
-  blue: [23, 63, 107],
-  orange: [243, 108, 33],
-  darkGray: [95, 104, 115],
-  lightGray: [243, 245, 247],
-  text: [17, 24, 39],
-  border: [221, 226, 232],
-}
+function addCover(doc, budget, settings, report, logoImage) {
+  const general = budget.generalData || {}
+  const client = budget.clientData || {}
+  let y = pdfPage.contentTop + 6
 
-const page = { width: 210, height: 297, marginX: 16, marginBottom: 24 }
-const footerY = 287
-const footerLineY = 281
+  doc.setFillColor(...pdfColors.surface)
+  doc.roundedRect(pdfPage.marginX, y, pdfPage.width - pdfPage.marginX * 2, 66, 2, 2, 'F')
+  doc.setFillColor(...pdfColors.orange)
+  doc.rect(pdfPage.marginX, y, 2.5, 66, 'F')
 
-function ensureSpace(doc, y, needed) {
-  if (y + needed <= page.height - page.marginBottom) return y
-  doc.addPage()
-  return 28
-}
+  if (logoImage) {
+    drawImageContained(doc, logoImage, pdfPage.marginX + 8, y + 9, 62, 24)
+  }
 
-function hasSpace(y, needed) {
-  return y + needed <= page.height - page.marginBottom
-}
-
-function ensureSectionStart(doc, y, needed = 24) {
-  return hasSpace(y, needed) ? y : ensureSpace(doc, y, needed)
-}
-
-function loadImageAsDataUrl(src) {
-  if (!src) return Promise.resolve(null)
-  if (src.startsWith('data:image/')) return Promise.resolve(src)
-  return fetch(src)
-    .then((response) => response.blob())
-    .then(
-      (blob) =>
-        new Promise((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result)
-          reader.onerror = reject
-          reader.readAsDataURL(blob)
-        }),
-    )
-    .catch(() => null)
-}
-
-function getImageFormat(dataUrl) {
-  if (dataUrl?.startsWith('data:image/jpeg') || dataUrl?.startsWith('data:image/jpg')) return 'JPEG'
-  if (dataUrl?.startsWith('data:image/webp')) return 'WEBP'
-  return 'PNG'
-}
-
-function addPageTitle(doc, number, title, y) {
-  y = ensureSectionStart(doc, y, 22)
   doc.setFont('helvetica', 'bold')
+  doc.setFontSize(22)
+  doc.setTextColor(...pdfColors.navy)
+  doc.text('OFERTA TECNICA Y ECONOMICA', pdfPage.marginX + 8, y + 45)
+  doc.setFontSize(10)
+  doc.setTextColor(...pdfColors.orange)
+  doc.text('DOCUMENTO CORPORATIVO DE INGENIERIA', pdfPage.marginX + 8, y + 54)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(...pdfColors.muted)
+  doc.text('REFERENCIA', pdfPage.width - pdfPage.marginX - 6, y + 14, { align: 'right' })
   doc.setFontSize(13)
-  doc.setTextColor(...colors.orange)
-  doc.text(number, page.marginX, y)
-  doc.setTextColor(...colors.blue)
-  doc.text(title, page.marginX + (number ? 12 : 0), y)
-  doc.setDrawColor(...colors.border)
-  doc.line(page.marginX, y + 4, page.width - page.marginX, y + 4)
-  return y + 12
-}
+  doc.setTextColor(...pdfColors.navy)
+  doc.text(safeText(budget.budgetNumber || general.number), pdfPage.width - pdfPage.marginX - 6, y + 23, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.setTextColor(...pdfColors.muted)
+  doc.text(formatPdfDate(general.date), pdfPage.width - pdfPage.marginX - 6, y + 31, { align: 'right' })
 
-function addParagraph(doc, text, y, options = {}) {
-  const cleanText = safeText(text, '').trim()
-  if (!cleanText) return y
-  const width = options.width || page.width - page.marginX * 2
-  const lines = doc.splitTextToSize(cleanText, width)
-  y = ensureSpace(doc, y, lines.length * 5 + 4)
-  doc.setFont('helvetica', options.bold ? 'bold' : 'normal')
-  doc.setFontSize(options.fontSize || 9.5)
-  doc.setTextColor(...(options.color || colors.text))
-  doc.text(lines, options.x || page.marginX, y)
-  return y + lines.length * 5 + 4
-}
+  y += 82
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(17)
+  doc.setTextColor(...pdfColors.text)
+  doc.text(
+    doc.splitTextToSize(getProfessionalProjectTitle(general, report), pdfPage.width - pdfPage.marginX * 2),
+    pdfPage.marginX,
+    y,
+  )
 
-function addList(doc, items, y) {
-  const cleanItems = Array.isArray(items) ? items.filter((item) => safeText(item, '').trim()) : []
-  cleanItems.forEach((item) => {
-    y = ensureSpace(doc, y, 10)
-    doc.setTextColor(...colors.orange)
-    doc.text('-', page.marginX, y)
-    y = addParagraph(doc, item, y, { x: page.marginX + 5, width: page.width - page.marginX * 2 - 5 })
+  y += 20
+  y = drawKeyValueGrid(
+    doc,
+    [
+      ['Cliente', client.name],
+      ['Emplazamiento', general.projectAddress],
+      ['Vigencia', `${safeText(general.validityDays)} dias`],
+      ['Empresa', settings.legalName || settings.name],
+      ['Contacto', combinePartialValues([settings.phone, settings.email])],
+    ],
+    y,
+    { labelWidth: 34 },
+  )
+
+  y = ensurePdfSpace(doc, y + 10, 22)
+  doc.setDrawColor(...pdfColors.orange)
+  doc.setLineWidth(0.6)
+  doc.line(pdfPage.marginX, y, pdfPage.width - pdfPage.marginX, y)
+  y = drawParagraph(doc, settings.professionalDefaults?.tagline, y + 9, {
+    color: pdfColors.muted,
+    fontSize: 10,
+    width: 150,
   })
+
   return y
 }
 
-function addInfoTable(doc, rows, y) {
-  const body = filterFilledRows(rows)
-  if (body.length === 0) return y
-  autoTable(doc, {
-    body,
-    startY: y,
-    theme: 'grid',
-    margin: { left: page.marginX, right: page.marginX },
-    styles: { font: 'helvetica', fontSize: 9, cellPadding: 2.4, lineColor: colors.border, lineWidth: 0.1 },
-    columnStyles: { 0: { cellWidth: 42, fontStyle: 'bold', textColor: colors.blue }, 1: { cellWidth: 136 } },
-  })
-  return doc.lastAutoTable.finalY + 8
-}
-
-function optionalRow(label, value) {
-  const cleanValue = safeText(value, '').trim()
-  return cleanValue ? [label, cleanValue] : null
-}
-
-function requiredRow(label, value) {
-  return [label, safeText(value)]
-}
-
-function addCover(doc, budget, settings, report, logoDataUrl) {
+function addTechnicalInfo(doc, budget, report, startY) {
+  let y = drawSectionTitle(doc, '01', 'Identificacion de la oferta', startY + 2)
   const general = budget.generalData || {}
   const client = budget.clientData || {}
-  doc.setFillColor(...colors.lightGray)
-  doc.rect(0, 0, page.width, page.height, 'F')
-  if (logoDataUrl) {
-    doc.addImage(logoDataUrl, getImageFormat(logoDataUrl), 72, 24, 66, 28)
-  }
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(30)
-  doc.setTextColor(...colors.blue)
-  doc.text('PRESUPUESTO', page.width / 2, 82, { align: 'center' })
-  doc.setDrawColor(...colors.orange)
-  doc.setLineWidth(1.2)
-  doc.line(54, 90, 156, 90)
-  doc.setFontSize(16)
-  doc.setTextColor(...colors.text)
-  doc.text(getProfessionalProjectTitle(general, report), page.width / 2, 106, { align: 'center' })
-  addInfoTable(doc, [
-    requiredRow('Cliente', client.name),
-    requiredRow('Emplazamiento', general.projectAddress),
-    requiredRow('Referencia', budget.budgetNumber || general.number),
-    requiredRow('Fecha', formatPdfDate(general.date)),
-    requiredRow('Vigencia', `${safeText(general.validityDays)} dias`),
-  ], 124)
-  doc.setFont('helvetica', 'italic')
-  doc.setFontSize(11)
-  doc.setTextColor(...colors.darkGray)
-  doc.text(safeText(settings.professionalDefaults?.tagline), page.width / 2, 232, { align: 'center' })
-}
-
-function addTechnicalInfo(doc, budget, report) {
-  doc.addPage()
-  let y = 30
-  const general = budget.generalData || {}
-  const client = budget.clientData || {}
-  y = addPageTitle(doc, '01', 'IDENTIFICACION DE LA OFERTA', y)
-  y = addInfoTable(doc, [
+  y = drawKeyValueGrid(doc, [
     ['Objeto', report.offerObject || general.projectName || '-'],
     ['Cliente y documento', combinePartialValues([client.name, client.taxId])],
     ['Contacto', report.contactPerson],
     ['Emplazamiento', general.projectAddress],
     ['Tecnico responsable', report.responsibleTechnician],
   ], y)
+
   if (report.executiveSummary) {
-    y = addPageTitle(doc, '02', 'RESUMEN EJECUTIVO', y)
-    y = addParagraph(doc, report.executiveSummary, y)
+    y = drawSectionTitle(doc, '02', 'Resumen ejecutivo', y + 3)
+    y = drawParagraph(doc, report.executiveSummary, y)
   }
+
   if (report.recommendedSolution) {
-    y = addPageTitle(doc, '', 'SOLUCION RECOMENDADA', y)
-    y = addParagraph(doc, report.recommendedSolution, y)
+    y = drawSectionTitle(doc, '03', 'Solucion recomendada', y + 3)
+    y = drawParagraph(doc, report.recommendedSolution, y)
   }
+
   if (report.generalScope.length > 0) {
-    y = addPageTitle(doc, '03', 'ALCANCE GENERAL', y)
-    y = addList(doc, report.generalScope, y)
+    y = drawSectionTitle(doc, '04', 'Alcance general', y + 3)
+    y = addBulletList(doc, report.generalScope, y)
   }
+
   if (report.startingConditions) {
-    y = addPageTitle(doc, '04', 'CONDICIONANTES DE PARTIDA', y)
-    addParagraph(doc, report.startingConditions, y)
+    y = drawSectionTitle(doc, '05', 'Condicionantes de partida', y + 3)
+    y = drawParagraph(doc, report.startingConditions, y)
   }
+
+  return y
 }
 
-function addMeasurement(doc, budget, totals) {
-  doc.addPage()
-  let y = addPageTitle(doc, '05', 'MEDICION Y VALORACION', 30)
-  y = addParagraph(doc, 'Las partidas se organizan por capitulos para facilitar la lectura, el control de alcance y la trazabilidad economica.', y)
+function addBulletList(doc, items, y) {
+  let cursorY = y
+  const cleanItems = Array.isArray(items)
+    ? items.filter((item) => safeText(item, '').trim())
+    : []
+
+  cleanItems.forEach((item) => {
+    cursorY = ensurePdfSpace(doc, cursorY, 9)
+    doc.setFillColor(...pdfColors.orange)
+    doc.circle(pdfPage.marginX + 1.4, cursorY - 1.4, 0.9, 'F')
+    cursorY = drawParagraph(doc, item, cursorY, {
+      x: pdfPage.marginX + 5,
+      width: pdfPage.width - pdfPage.marginX * 2 - 5,
+      fontSize: 8.6,
+      lineHeight: 4.4,
+    })
+  })
+
+  return cursorY
+}
+
+function estimateChapterHeight(chapter) {
+  const rows = Math.max(1, chapter.items?.length || 0)
+  return 21 + rows * 7.4
+}
+
+function addMeasurement(doc, budget, totals, startY) {
+  let y = drawSectionTitle(doc, '06', 'Medicion y valoracion', startY + 4)
+  y = drawParagraph(
+    doc,
+    'La medicion se estructura por capitulos para facilitar la revision tecnica, el control de alcance y la trazabilidad economica de cada partida.',
+    y,
+    { color: pdfColors.muted },
+  )
+
   ;(budget.chapters || []).forEach((chapter, chapterIndex) => {
-    y = ensureSpace(doc, y, 18)
+    y = ensurePdfSpace(doc, y, Math.min(estimateChapterHeight(chapter), 70))
+    doc.setFillColor(...pdfColors.blueSoft)
+    doc.roundedRect(pdfPage.marginX, y - 4, pdfPage.width - pdfPage.marginX * 2, 9.5, 1.3, 1.3, 'F')
+    doc.setFillColor(...pdfColors.orange)
+    doc.rect(pdfPage.marginX, y - 4, 2.2, 9.5, 'F')
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
-    doc.setTextColor(...colors.blue)
-    doc.text(`${String(chapterIndex + 1).padStart(2, '0')}. ${safeText(chapter.name)}`, page.marginX, y)
-    y += 5
+    doc.setFontSize(9)
+    doc.setTextColor(...pdfColors.navy)
+    doc.text(
+      `${String(chapterIndex + 1).padStart(2, '0')}  ${safeText(chapter.name)}`.toUpperCase(),
+      pdfPage.marginX + 5,
+      y + 1.8,
+    )
+    y += 8
+
     autoTable(doc, {
       head: [['COD.', 'DESCRIPCION', 'UD.', 'CANT.', 'P. UNIT.', 'IMPORTE']],
       body: (chapter.items?.length ? chapter.items : [{}]).map((item, itemIndex) => [
@@ -214,161 +199,231 @@ function addMeasurement(doc, budget, totals) {
       ]),
       startY: y,
       theme: 'grid',
-      margin: { left: page.marginX, right: page.marginX },
-      headStyles: { fillColor: colors.blue, textColor: [255, 255, 255], fontStyle: 'bold' },
-      styles: { font: 'helvetica', fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
-      columnStyles: { 0: { cellWidth: 16 }, 1: { cellWidth: 74 }, 2: { cellWidth: 14 }, 3: { cellWidth: 20, halign: 'right' }, 4: { cellWidth: 28, halign: 'right' }, 5: { cellWidth: 28, halign: 'right' } },
+      margin: {
+        left: pdfPage.marginX,
+        right: pdfPage.marginX,
+        top: pdfPage.contentTop,
+        bottom: pdfPage.height - pdfPage.contentBottom,
+      },
+      showHead: 'everyPage',
+      pageBreak: estimateChapterHeight(chapter) < 205 ? 'avoid' : 'auto',
       rowPageBreak: 'avoid',
+      headStyles: {
+        fillColor: pdfColors.navy,
+        textColor: pdfColors.white,
+        fontStyle: 'bold',
+        fontSize: 7.4,
+        lineWidth: 0,
+      },
+      styles: {
+        font: 'helvetica',
+        fontSize: 7.7,
+        cellPadding: { top: 1.9, right: 2, bottom: 1.9, left: 2 },
+        overflow: 'linebreak',
+        valign: 'middle',
+        lineColor: pdfColors.lightBorder,
+        lineWidth: 0.1,
+      },
+      alternateRowStyles: {
+        fillColor: pdfColors.surface,
+      },
+      columnStyles: {
+        0: { cellWidth: 14, textColor: pdfColors.muted },
+        1: { cellWidth: 78, valign: 'top' },
+        2: { cellWidth: 14 },
+        3: { cellWidth: 19, halign: 'right' },
+        4: { cellWidth: 27, halign: 'right' },
+        5: { cellWidth: 28, halign: 'right', fontStyle: 'bold', textColor: pdfColors.navy },
+      },
     })
-    y = doc.lastAutoTable.finalY + 7
-    y = ensureSpace(doc, y, 8)
+
+    y = ensurePdfSpace(doc, doc.lastAutoTable.finalY + 5, 9)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...colors.text)
-    doc.text(`Subtotal capitulo: ${formatCurrency(getChapterSubtotal(chapter))}`, page.width - page.marginX, y, { align: 'right' })
+    doc.setFontSize(8.3)
+    doc.setTextColor(...pdfColors.navy)
+    doc.text(
+      `Subtotal capitulo: ${formatCurrency(getChapterSubtotal(chapter))}`,
+      pdfPage.width - pdfPage.marginX,
+      y,
+      { align: 'right' },
+    )
     y += 10
   })
-  y = ensureSpace(doc, y, 48)
-  autoTable(doc, {
-    body: [
-      ['Subtotal', formatCurrency(totals.subtotal)],
-      ['Descuento / ajuste', formatCurrency(totals.discountAmount)],
-      ['Base imponible', formatCurrency(totals.taxableBase)],
-      [formatPercentLabel('IVA', budget.summary?.ivaPercent ?? budget.vatPercentage), formatCurrency(totals.ivaAmount)],
-      ['TOTAL PRESUPUESTO', formatCurrency(totals.total)],
-    ],
-    startY: y,
-    theme: 'grid',
-    margin: { left: 105, right: page.marginX },
-    styles: { font: 'helvetica', fontSize: 9, cellPadding: 2.5 },
-    didParseCell: (data) => {
-      if (data.row.index === 4) {
-        data.cell.styles.fillColor = data.column.index === 0 ? colors.blue : colors.orange
-        data.cell.styles.textColor = [255, 255, 255]
-        data.cell.styles.fontStyle = 'bold'
-      }
-    },
+
+  return addEconomicSummary(doc, budget, totals, y)
+}
+
+function addEconomicSummary(doc, budget, totals, startY) {
+  let y = ensurePdfSpace(doc, startY, 58)
+  const summary = budget.summary || {}
+  const x = 98
+  const width = 96
+
+  doc.setFillColor(...pdfColors.surface)
+  doc.roundedRect(pdfPage.marginX, y - 4, 78, 47, 1.5, 1.5, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.setTextColor(...pdfColors.navy)
+  doc.text('Resumen economico', pdfPage.marginX + 4, y + 4)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.3)
+  doc.setTextColor(...pdfColors.muted)
+  doc.text(
+    doc.splitTextToSize('Importes expresados en euros. Impuestos desglosados segun normativa aplicable.', 67),
+    pdfPage.marginX + 4,
+    y + 13,
+  )
+
+  const rows = [
+    ['Subtotal', formatCurrency(totals.subtotal)],
+    ['Descuento / ajuste', formatCurrency(totals.discountAmount)],
+    ['Base imponible', formatCurrency(totals.taxableBase)],
+    [formatPercentLabel('IVA', summary.ivaPercent ?? budget.vatPercentage), formatCurrency(totals.ivaAmount)],
+  ]
+
+  doc.setDrawColor(...pdfColors.lightBorder)
+  doc.roundedRect(x, y - 4, width, 47, 1.5, 1.5, 'S')
+  rows.forEach(([label, value], index) => {
+    const rowY = y + index * 7
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.2)
+    doc.setTextColor(...pdfColors.muted)
+    doc.text(label, x + 4, rowY)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...pdfColors.text)
+    doc.text(value, x + width - 4, rowY, { align: 'right' })
   })
-  y = doc.lastAutoTable.finalY + 8
-  y = addParagraph(doc, 'Importes expresados en euros. Impuestos desglosados segun normativa aplicable.', y, { color: colors.darkGray, fontSize: 8 })
-  return y
+
+  doc.setFillColor(...pdfColors.navy)
+  doc.roundedRect(x, y + 28, width, 13, 1.5, 1.5, 'F')
+  doc.setFillColor(...pdfColors.orange)
+  doc.rect(x, y + 40, width, 1.2, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(...pdfColors.white)
+  doc.text('TOTAL PRESUPUESTO', x + 4, y + 36)
+  doc.setFontSize(11.5)
+  doc.text(formatCurrency(totals.total), x + width - 4, y + 36, { align: 'right' })
+
+  return y + 54
 }
 
 function addPlanningAndConditions(doc, budget, report, startY) {
-  let y = ensureSectionStart(doc, startY + 6, 40)
-  y = addPageTitle(doc, '06', 'PLAZO Y PLANIFICACION', y)
-  y = addInfoTable(doc, [
+  let y = drawSectionTitle(doc, '07', 'Plazo y planificacion', startY + 3)
+  y = drawKeyValueGrid(doc, [
     ['Inicio estimado', report.estimatedStart],
     ['Duracion estimada', report.estimatedDuration],
     ['Horario previsto', report.expectedSchedule],
     ['Condicionantes', report.planningConditions],
   ], y)
-  const economicConditions = [budget.conditions?.paymentTerms, ...report.economicConditions].filter((item) => safeText(item, '').trim())
+
+  const economicConditions = [
+    budget.conditions?.paymentTerms,
+    ...report.economicConditions,
+  ].filter((item) => safeText(item, '').trim())
+
   if (economicConditions.length) {
-    y = addPageTitle(doc, '07', 'CONDICIONES ECONOMICAS', y)
-    y = addList(doc, economicConditions, y)
+    y = drawSectionTitle(doc, '08', 'Condiciones economicas', y + 3)
+    y = addBulletList(doc, economicConditions, y)
   }
+
   if (report.inclusions.length) {
-    y = addPageTitle(doc, '08', 'INCLUSIONES', y)
-    y = addList(doc, report.inclusions, y)
+    y = drawSectionTitle(doc, '09', 'Inclusiones', y + 3)
+    y = addBulletList(doc, report.inclusions, y)
   }
+
   if (report.exclusions.length) {
-    y = addPageTitle(doc, '09', 'EXCLUSIONES', y)
-    y = addList(doc, report.exclusions, y)
+    y = drawSectionTitle(doc, '10', 'Exclusiones', y + 3)
+    y = addBulletList(doc, report.exclusions, y)
   }
+
   if (report.warranty) {
-    y = addPageTitle(doc, '10', 'GARANTIA', y)
-    addParagraph(doc, report.warranty, y)
+    y = drawSectionTitle(doc, '11', 'Garantia', y + 3)
+    y = drawParagraph(doc, report.warranty, y)
   }
+
+  return y
 }
 
-function addMethodAndAcceptance(doc, budget, settings, report) {
-  doc.addPage()
-  let y = addPageTitle(doc, '11', 'METODO PRITECA', 30)
-  y = addParagraph(doc, report.customMethodDescription, y)
+function addMethodAndAcceptance(doc, budget, settings, report, startY) {
+  let y = drawSectionTitle(doc, '12', `Metodo ${COMPANY_NAME}`, startY + 3)
+  y = drawParagraph(doc, report.customMethodDescription, y, { color: pdfColors.muted })
+
   pritecaMethod.forEach((step) => {
-    y = ensureSpace(doc, y, 15)
+    y = ensurePdfSpace(doc, y, 16)
+    doc.setFillColor(...pdfColors.orangeSoft)
+    doc.roundedRect(pdfPage.marginX, y - 5, pdfPage.width - pdfPage.marginX * 2, 13, 1.3, 1.3, 'F')
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
-    doc.setTextColor(...colors.orange)
-    doc.text(step.number, page.marginX, y)
-    doc.setTextColor(...colors.blue)
-    doc.text(step.title, page.marginX + 13, y)
-    y = addParagraph(doc, step.description, y + 5, { color: colors.darkGray })
+    doc.setFontSize(8.5)
+    doc.setTextColor(...pdfColors.orange)
+    doc.text(step.number, pdfPage.marginX + 4, y)
+    doc.setTextColor(...pdfColors.navy)
+    doc.text(step.title, pdfPage.marginX + 17, y)
+    y = drawParagraph(doc, step.description, y + 5, {
+      x: pdfPage.marginX + 17,
+      width: pdfPage.width - pdfPage.marginX * 2 - 20,
+      color: pdfColors.muted,
+      fontSize: 8,
+      lineHeight: 4,
+    })
   })
+
   if (report.closingDocumentation.length) {
-    y = addPageTitle(doc, '12', 'DOCUMENTACION DE CIERRE', y)
-    y = addList(doc, report.closingDocumentation, y)
+    y = drawSectionTitle(doc, '13', 'Documentacion de cierre', y + 3)
+    y = addBulletList(doc, report.closingDocumentation, y)
   }
-  addParagraph(doc, 'Cada decision tecnica tiene un impacto. Nuestra responsabilidad es tomar la correcta.', y, { bold: true, color: colors.blue })
 
-  doc.addPage()
-  y = addPageTitle(doc, '13', 'ACEPTACION DEL PRESUPUESTO', 30)
-  y = addParagraph(doc, 'Mediante la firma de este documento, el cliente declara haber revisado y aceptado el alcance, los importes, las exclusiones, las condiciones economicas y la planificacion descritos en la presente oferta.', y)
-  y = ensureSpace(doc, y, 70)
-  const leftX = page.marginX
+  y = drawSectionTitle(doc, '14', 'Aceptacion del presupuesto', y + 3, { neededHeight: 78 })
+  y = drawParagraph(
+    doc,
+    'Mediante la firma de este documento, el cliente declara haber revisado y aceptado el alcance, los importes, las exclusiones, las condiciones economicas y la planificacion descritos en la presente oferta.',
+    y,
+  )
+
+  y = ensurePdfSpace(doc, y + 4, 48)
+  const leftX = pdfPage.marginX
   const rightX = 112
-  const signatureLineY = y + 34
-  doc.setDrawColor(...colors.darkGray)
-  doc.line(leftX, signatureLineY, leftX + 72, signatureLineY)
-  doc.line(rightX, signatureLineY, page.width - page.marginX, signatureLineY)
+  const lineY = y + 22
+  doc.setDrawColor(...pdfColors.border)
+  doc.line(leftX, lineY, leftX + 72, lineY)
+  doc.line(rightX, lineY, pdfPage.width - pdfPage.marginX, lineY)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(...colors.blue)
-  doc.text('POR PRITECA', leftX, signatureLineY + 8)
-  doc.text('POR EL CLIENTE', rightX, signatureLineY + 8)
+  doc.setFontSize(8)
+  doc.setTextColor(...pdfColors.navy)
+  doc.text(`POR ${COMPANY_NAME}`, leftX, lineY + 8)
+  doc.text('POR EL CLIENTE', rightX, lineY + 8)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...colors.text)
-  doc.text(`Nombre: ${safeText(settings.legalName || settings.name)}`, leftX, signatureLineY + 16)
-  doc.text('Cargo: ', leftX, signatureLineY + 23)
-  doc.text('Fecha: ', leftX, signatureLineY + 30)
-  doc.text(`Nombre: ${safeText(budget.clientData?.name)}`, rightX, signatureLineY + 16)
-  doc.text(`DNI/NIF: ${safeText(budget.clientData?.taxId)}`, rightX, signatureLineY + 23)
-  doc.text('Fecha: ', rightX, signatureLineY + 30)
-  y = signatureLineY + 42
-  y = addPageTitle(doc, '14', 'DATOS CORPORATIVOS', y)
-  addInfoTable(doc, [
-    optionalRow('Razon social', settings.legalName),
-    optionalRow('NIF/CIF', settings.taxId),
-    optionalRow('Domicilio', settings.address),
-    optionalRow(
-      'Contacto',
-      combinePartialValues([settings.phone, settings.email]) === '-'
-        ? ''
-        : combinePartialValues([settings.phone, settings.email]),
-    ),
-    optionalRow('Web', settings.website),
-    optionalRow('IBAN', settings.iban),
-  ].filter(Boolean), y)
+  doc.setTextColor(...pdfColors.muted)
+  doc.text(`Nombre: ${safeText(settings.legalName || settings.name)}`, leftX, lineY + 16)
+  doc.text(`Nombre: ${safeText(budget.clientData?.name)}`, rightX, lineY + 16)
+  doc.text(`DNI/NIF: ${safeText(budget.clientData?.taxId)}`, rightX, lineY + 23)
+
+  y = lineY + 34
+  y = drawSectionTitle(doc, '15', 'Datos corporativos', y + 3)
+  drawKeyValueGrid(doc, [
+    ['Razon social', settings.legalName],
+    ['NIF/CIF', settings.taxId],
+    ['Domicilio', settings.address],
+    ['Contacto', combinePartialValues([settings.phone, settings.email])],
+    ['Web', settings.website],
+    ['IBAN', settings.iban],
+  ], y)
 }
 
-function addFooters(doc, settings) {
-  const totalPages = doc.getNumberOfPages()
-  for (let index = 1; index <= totalPages; index += 1) {
-    doc.setPage(index)
-    doc.setDrawColor(...colors.border)
-    doc.line(page.marginX, footerLineY, page.width - page.marginX, footerLineY)
-    doc.setFontSize(8)
-    doc.setTextColor(...colors.darkGray)
-    doc.text(safeText(settings.name), page.marginX, footerY)
-    const contact = [settings.website, settings.phone].filter(Boolean).join(' | ')
-    doc.text(
-      `${contact ? `${contact} | ` : ''}Pagina ${index} de ${totalPages}`,
-      page.width - page.marginX,
-      footerY,
-      { align: 'right' },
-    )
-  }
-}
-
-export async function generateProfessionalBudgetPdf(budget, totals, companySettings = companyData) {
-  const settings = { ...companyData, ...(companySettings || {}) }
+export async function generateProfessionalBudgetPdf(budget, totals, companySettings) {
+  const settings = normalizePdfSettings(companySettings)
   const report = mergeProfessionalDefaults(budget.technicalReport, settings)
-  const logoDataUrl = await loadImageAsDataUrl(settings.logo || pritecaLogo)
+  const logoImage = await loadLogoWithFallback(settings)
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  addCover(doc, budget, settings, report, logoDataUrl)
-  addTechnicalInfo(doc, budget, report)
-  const measurementEndY = addMeasurement(doc, budget, totals)
-  addPlanningAndConditions(doc, budget, report, measurementEndY)
-  addMethodAndAcceptance(doc, budget, settings, report)
-  addFooters(doc, settings)
+
+  let y = addCover(doc, budget, settings, report, logoImage)
+  y = addTechnicalInfo(doc, budget, report, y)
+  y = addMeasurement(doc, budget, totals, y)
+  y = addPlanningAndConditions(doc, budget, report, y)
+  addMethodAndAcceptance(doc, budget, settings, report, y)
+  drawCorporateHeaderFooter(doc, settings, logoImage, {
+    reference: budget.budgetNumber || budget.generalData?.number,
+  })
+
   doc.save(buildProfessionalPdfFileName(budget.budgetNumber || budget.generalData?.number, budget.clientData?.name))
 }

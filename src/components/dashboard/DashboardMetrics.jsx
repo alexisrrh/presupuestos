@@ -9,7 +9,7 @@ function MetricCard({ icon: Icon, label, value }) {
           <p className="text-sm font-medium text-[#6b7280]">{label}</p>
           <p className="mt-2 text-2xl font-semibold text-[#111827]">{value}</p>
         </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#fcf1f1] text-[#C62828]">
+        <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[var(--brand-muted)] text-[var(--brand-navy)]">
           <Icon size={22} aria-hidden="true" />
         </div>
       </div>

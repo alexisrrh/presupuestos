@@ -1,4 +1,5 @@
 import { calculateBudgetTotals, calculateItemTotal } from '../../utils/budgetCalculations'
+import { LOGO_HORIZONTAL } from '../../config/branding'
 import { normalizeStoredBudget } from '../budgetStorage'
 import { getChapterSubtotal } from '../../utils/professionalBudgetHelpers'
 
@@ -63,7 +64,7 @@ export function mapCompanySettingsFromRow(row = {}) {
     email: row.email || '',
     iban: row.iban || '',
     legalName: row.legal_name || row.business_name || '',
-    logo: row.logo_data_url || '',
+    logo: row.logo_data_url || LOGO_HORIZONTAL,
     logoUrl: row.logo_url || row.logo_path || '',
     name: row.name || row.business_name || 'PRITECA',
     phone: row.phone || '',

@@ -52,7 +52,7 @@ function BudgetHistoryTable({
                 <div className="flex items-center gap-2">
                   <StatusBadge status={budget.status} />
                   <select
-                    className="rounded-md border border-[#d1d5db] bg-white px-2 py-1 text-xs text-[#111827] outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+                    className="rounded-md border border-[#d1d5db] bg-white px-2 py-1 text-xs text-[#111827] outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
                     aria-label={`Cambiar estado de ${budget.budgetNumber}`}
                     value={budget.status}
                     onChange={(event) =>
@@ -79,7 +79,7 @@ function BudgetHistoryTable({
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#d1d5db] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#d1d5db] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
                     aria-label={`Abrir ${budget.budgetNumber}`}
                     onClick={() => onOpenBudget(budget)}
                   >
@@ -87,7 +87,7 @@ function BudgetHistoryTable({
                   </button>
                   <button
                     type="button"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#d1d5db] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#d1d5db] text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
                     aria-label={`Duplicar ${budget.budgetNumber}`}
                     onClick={() => onDuplicateBudget(budget.id)}
                   >
@@ -101,7 +101,7 @@ function BudgetHistoryTable({
                   />
                   <button
                     type="button"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#d1d5db] text-[#991b1b] transition hover:bg-[#fff5f5] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#d1d5db] text-[#991b1b] transition hover:bg-[#fff5f5] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
                     aria-label={`Eliminar ${budget.budgetNumber}`}
                     onClick={() => onDeleteClick(budget)}
                   >

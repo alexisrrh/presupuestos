@@ -72,14 +72,14 @@ function Register({ onNavigate }) {
 
         <button
           type="submit"
-          className="inline-flex w-full items-center justify-center rounded-md bg-[#C62828] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2 disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center rounded-md bg-[var(--brand-navy)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-navy-dark)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2 disabled:opacity-60"
           disabled={isSubmitting}
         >
           {isSubmitting ? 'Registrando...' : 'Registrarse'}
         </button>
       </form>
 
-      <button className="mt-5 w-full text-center text-sm text-[#C62828] hover:underline" type="button" onClick={() => onNavigate('login')}>
+      <button className="mt-5 w-full text-center text-sm text-[var(--brand-navy)] hover:underline" type="button" onClick={() => onNavigate('login')}>
         Ya tengo cuenta
       </button>
     </AuthShell>

@@ -26,6 +26,7 @@ import {
   hasUnsavedChanges,
 } from './utils/budgetDirtyState'
 import { getNextBudgetNumber } from './utils/budgetNumber'
+import { COMPANY_NAME, LOGO_ISOTYPE } from './config/branding'
 import { getErrorMessage, logTechnicalError } from './utils/errorMessages'
 
 function App() {
@@ -378,8 +379,13 @@ function App() {
 
   if (authLoading) {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-[#f5f7f6] text-sm font-medium text-[#6b7280]">
-        Comprobando sesion...
+      <main className="flex min-h-svh flex-col items-center justify-center gap-3 bg-white text-sm font-medium text-[#6b7280]">
+        <img
+          src={LOGO_ISOTYPE}
+          alt={`${COMPANY_NAME} isotipo`}
+          className="h-14 w-14 rounded-md object-contain"
+        />
+        <span>Comprobando sesion...</span>
       </main>
     )
   }

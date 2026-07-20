@@ -88,7 +88,7 @@ function NewBudget({
       <section className="rounded-md border border-[#d8dfdb] bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#fcf1f1] text-[#C62828]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[var(--brand-muted)] text-[var(--brand-navy)]">
               <FilePlus2 size={22} aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
@@ -105,7 +105,7 @@ function NewBudget({
 
           <button
             type="button"
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-[#d1d5db] px-3 py-2 text-sm font-semibold text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2"
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-[#d1d5db] px-3 py-2 text-sm font-semibold text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
             onClick={onBack}
           >
             <ArrowLeft size={16} aria-hidden="true" />
@@ -127,7 +127,7 @@ function NewBudget({
               Estado del presupuesto
             </span>
             <select
-              className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+              className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
               value={status}
               onChange={(event) => updateStatus(event.target.value)}
             >
@@ -159,9 +159,9 @@ function NewBudget({
                 <button
                   key={option.value}
                   type="button"
-                  className={`rounded-md border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2 ${
+                  className={`rounded-md border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2 ${
                     documentType === option.value
-                      ? 'border-[#C62828] bg-[#fff5f5]'
+                      ? 'border-[var(--brand-navy)] bg-[var(--brand-muted)]'
                       : 'border-[#d1d5db] bg-white hover:bg-[#f8faf9]'
                   }`}
                   onClick={() => updateDocumentType(option.value)}

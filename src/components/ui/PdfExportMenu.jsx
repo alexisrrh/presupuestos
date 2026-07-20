@@ -47,7 +47,7 @@ function PdfExportMenu({
     <div ref={menuRef} className="relative">
       <button
         type="button"
-        className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#C62828] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#C62828] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--brand-navy)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-navy-dark)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         aria-label={label}
         aria-expanded={isOpen}
         aria-haspopup="menu"

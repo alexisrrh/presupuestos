@@ -1,3 +1,5 @@
+import { LOGO_HORIZONTAL } from '../config/branding'
+
 export const companyData = {
   name: 'PRITECA',
   legalName: 'PRITECA Construcciones',
@@ -12,7 +14,7 @@ export const companyData = {
   defaultPaymentTerms: '',
   defaultExecutionTime: '',
   defaultObservations: '',
-  logo: '',
+  logo: LOGO_HORIZONTAL,
   professionalDefaults: {
     tagline: 'La ingenieria convierte la complejidad en claridad.',
     executiveSummary: '',

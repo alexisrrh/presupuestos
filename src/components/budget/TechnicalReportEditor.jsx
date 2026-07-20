@@ -5,7 +5,7 @@ function Textarea({ label, value, onChange }) {
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-[#33443d]">{label}</span>
       <textarea
-        className="min-h-24 w-full resize-y rounded-md border border-[#ccd6d1] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+        className="min-h-24 w-full resize-y rounded-md border border-[#ccd6d1] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -18,7 +18,7 @@ function Input({ label, value, onChange }) {
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-[#33443d]">{label}</span>
       <input
-        className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none transition focus:border-[#C62828] focus:ring-2 focus:ring-[#C62828]/15"
+        className="w-full rounded-md border border-[#ccd6d1] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none transition focus:border-[var(--brand-navy)] focus:ring-2 focus:ring-[var(--brand-navy)]/15"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
