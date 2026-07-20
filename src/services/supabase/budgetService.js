@@ -2,11 +2,12 @@ import { getNextBudgetNumber } from '../../utils/budgetNumber'
 import { normalizeStoredBudget } from '../budgetStorage'
 import {
   createClientId,
+  isUuid,
   mapBudgetFromRows,
   mapBudgetToPayload,
 } from './budgetMappers'
 import { ensureCurrentOrganization } from './organizationService'
-import { getCurrentUserId, requireSupabase } from './supabaseServiceUtils'
+import { requireSupabase } from './supabaseServiceUtils'
 
 async function fetchBudgetRows(client, organizationId, budgetId = null) {
   let budgetQuery = client
@@ -49,81 +50,6 @@ async function fetchBudgetRows(client, organizationId, budgetId = null) {
   )
 }
 
-async function saveWithFallback(client, organizationId, userId, budget) {
-  const payload = mapBudgetToPayload(budget, organizationId)
-  const budgetRow = {
-    ...payload.budget,
-    created_by: userId,
-  }
-  if (!budgetRow.id) {
-    delete budgetRow.id
-  }
-
-  const { data: savedBudget, error: budgetError } = await client
-    .from('budgets')
-    .upsert(budgetRow, { onConflict: 'id' })
-    .select('*')
-    .single()
-
-  if (budgetError) throw budgetError
-
-  const { data: existingChapters, error: existingChapterError } = await client
-    .from('budget_chapters')
-    .select('id')
-    .eq('budget_id', savedBudget.id)
-  if (existingChapterError) throw existingChapterError
-
-  if (existingChapters?.length) {
-    const { error: deleteItemsError } = await client
-      .from('budget_items')
-      .delete()
-      .in(
-        'chapter_id',
-        existingChapters.map((chapter) => chapter.id),
-      )
-    if (deleteItemsError) throw deleteItemsError
-  }
-
-  const { error: deleteChaptersError } = await client
-    .from('budget_chapters')
-    .delete()
-    .eq('budget_id', savedBudget.id)
-  if (deleteChaptersError) throw deleteChaptersError
-
-  for (const chapter of payload.chapters) {
-    const { items, ...chapterRow } = chapter
-    if (!chapterRow.id) {
-      delete chapterRow.id
-    }
-    const { data: savedChapter, error: chapterError } = await client
-      .from('budget_chapters')
-      .insert({
-        ...chapterRow,
-        budget_id: savedBudget.id,
-        organization_id: organizationId,
-      })
-      .select('*')
-      .single()
-
-    if (chapterError) throw chapterError
-
-    if (items.length) {
-      const { error: itemsError } = await client.from('budget_items').insert(
-        items.map((item) => ({
-          ...Object.fromEntries(
-            Object.entries(item).filter(([key, value]) => key !== 'id' || value),
-          ),
-          chapter_id: savedChapter.id,
-          organization_id: organizationId,
-        })),
-      )
-      if (itemsError) throw itemsError
-    }
-  }
-
-  return getBudgetById(savedBudget.id)
-}
-
 export async function listBudgets() {
   const client = requireSupabase()
   const organization = await ensureCurrentOrganization()
@@ -140,29 +66,36 @@ export async function getBudgetById(id) {
 export async function createBudget(budget) {
   const client = requireSupabase()
   const organization = await ensureCurrentOrganization()
-  const userId = await getCurrentUserId(client)
-  const budgetNumber = budget.budgetNumber || budget.generalData?.number
+  const existingBudget = isUuid(budget.id) ? await getBudgetById(budget.id) : null
+  const budgetNumber = existingBudget
+    ? existingBudget.budgetNumber
+    : budget.budgetNumber || budget.generalData?.number || ''
   const normalizedBudget = normalizeStoredBudget({
     ...budget,
     id: budget.id || createClientId(),
     budgetNumber,
-  })
-  const payload = mapBudgetToPayload(normalizedBudget, organization.id)
-  const { data, error } = await client.rpc('save_budget_with_details', {
-    payload: {
-      ...payload,
-      budget: { ...payload.budget, created_by: userId },
+    generalData: {
+      ...(budget.generalData || {}),
+      number: budgetNumber,
     },
   })
+  const payload = mapBudgetToPayload(normalizedBudget, organization.id)
+  if (!existingBudget) {
+    payload.budget.id = null
+  }
+  const { data, error } = await client.rpc('save_budget_with_details', {
+    payload,
+  })
 
-  if (!error && data?.id) {
-    const savedBudget = await getBudgetById(data.id)
-    if (savedBudget) {
-      return savedBudget
-    }
+  if (error) {
+    throw error
   }
 
-  return saveWithFallback(client, organization.id, userId, normalizedBudget)
+  if (!data?.id) {
+    throw new Error('No se pudo guardar el presupuesto.')
+  }
+
+  return getBudgetById(data.id)
 }
 
 export async function updateBudget(id, budget) {
