@@ -68,6 +68,7 @@ export function normalizeStoredBudget(budget = {}, existingBudget) {
   return {
     id,
     budgetNumber,
+    clientId: budget.clientId || existingBudget?.clientId,
     documentType: normalizeDocumentType(
       budget.documentType || existingBudget?.documentType,
     ),

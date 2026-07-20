@@ -30,31 +30,17 @@ export async function ensureCurrentOrganization() {
   }
 
   const client = requireSupabase()
-  const userId = await getCurrentUserId(client)
-  const { data: organization, error: organizationError } = await client
-    .from('organizations')
-    .insert({ name: 'Mi empresa', created_by: userId })
-    .select('id, name')
-    .single()
 
-  if (organizationError) {
-    throw organizationError
+  const { data: organization, error } = await client.rpc(
+    'bootstrap_current_organization'
+  )
+
+  if (error) {
+    throw error
   }
 
-  const { error: memberError } = await client
-    .from('organization_members')
-    .insert({ organization_id: organization.id, user_id: userId, role: 'owner' })
-
-  if (memberError) {
-    throw memberError
-  }
-
-  const { error: settingsError } = await client
-    .from('company_settings')
-    .insert({ organization_id: organization.id })
-
-  if (settingsError) {
-    throw settingsError
+  if (!organization?.id) {
+    throw new Error('No se pudo crear la organización del usuario.')
   }
 
   return organization
