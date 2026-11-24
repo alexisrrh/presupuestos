@@ -84,11 +84,11 @@ function Header({
             <button
               type="button"
               className="inline-flex items-center justify-center gap-2 rounded-md border border-[#d1d5db] bg-white px-3 py-2 text-sm font-semibold text-[#111827] transition hover:bg-[#f3f4f6] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navy)] focus:ring-offset-2"
-              aria-label="Cerrar sesion"
+              aria-label="Cerrar sesión"
               onClick={onSignOut}
             >
               <LogOut size={16} aria-hidden="true" />
-              Cerrar sesion
+              Cerrar sesión
             </button>
           </div>
         </div>

@@ -6,6 +6,12 @@ import Toast from './components/ui/Toast'
 import useBudgets from './hooks/useBudgets'
 import useCompanySettings from './hooks/useCompanySettings'
 import useAuth from './hooks/useAuth'
+import useMembership from './hooks/useMembership'
+import AccessRestricted from './pages/AccessRestricted'
+import EmployeeArea from './pages/EmployeeArea'
+import Workers from './pages/Workers'
+import WorkSessions from './pages/WorkSessions'
+import WorkReports from './pages/WorkReports'
 import { isSupabaseConfigured } from './lib/supabaseClient'
 import Dashboard from './pages/Dashboard'
 import ForgotPassword from './pages/ForgotPassword'
@@ -45,12 +51,13 @@ function App() {
   const [saveStatus, setSaveStatus] = useState('idle')
   const [toast, setToast] = useState(null)
   const { loading: authLoading, session, signOut, user } = useAuth()
+  const membership = useMembership()
   const {
     refreshSettings,
     resetSettings,
     saveSettings,
     settings: companySettings,
-  } = useCompanySettings(Boolean(session))
+  } = useCompanySettings(Boolean(session && membership.canManageBusiness))
   const {
     budgets,
     duplicateExistingBudget,
@@ -59,7 +66,8 @@ function App() {
     removeBudget,
     refreshBudgets,
     saveNewBudget,
-  } = useBudgets(Boolean(session))
+    updateBudgetStatus,
+  } = useBudgets(Boolean(session && membership.canManageBusiness))
 
   const handleShowToast = useCallback((nextToast) => {
     setToast(nextToast)
@@ -287,7 +295,7 @@ function App() {
 
   const handleUpdateBudgetStatus = async (id, status) => {
     try {
-      await editBudget(id, { status })
+      await updateBudgetStatus(id, status)
     } catch (error) {
       logTechnicalError(error, 'Error actualizando estado')
       handleShowToast({ message: getErrorMessage(error), type: 'error' })
@@ -402,6 +410,18 @@ function App() {
     return <Login onNavigate={setAuthPage} />
   }
 
+  if (membership.loading) {
+    return <main className="flex min-h-svh items-center justify-center text-sm text-[#6b7280]">Comprobando permisos...</main>
+  }
+
+  if (membership.status !== 'active') {
+    return <AccessRestricted status={membership.status} />
+  }
+
+  if (membership.membership?.role === 'employee') {
+    return <EmployeeArea user={user} onSignOut={handleSignOut} />
+  }
+
   return (
     <>
       <AppLayout
@@ -442,6 +462,14 @@ function App() {
             onShowToast={handleShowToast}
             settings={companySettings}
           />
+        ) : activePage === 'workers' ? (
+          <Workers membership={membership.membership} />
+        ) : activePage === 'work-sessions' ? (
+          <WorkSessions membership={membership.membership} />
+        ) : activePage === 'work-reports' ? (
+          <WorkReports membership={membership.membership} />
+        ) : activePage === 'time-tracking' ? (
+          <EmployeeArea user={user} onSignOut={handleSignOut} />
         ) : (
           <Dashboard
             budgets={budgets}

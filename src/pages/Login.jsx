@@ -3,6 +3,7 @@ import AuthShell from '../components/auth/AuthShell'
 import Input from '../components/ui/Input'
 import useAuth from '../hooks/useAuth'
 import { hasValidationErrors, validateLoginForm } from '../utils/authValidation'
+import { createWorkerAccessService } from '../services/workers/workerAccessService'
 
 function Login({ onNavigate }) {
   const { signIn } = useAuth()
@@ -11,10 +12,12 @@ function Login({ onNavigate }) {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [password, setPassword] = useState('')
+  const [documentLogin, setDocumentLogin] = useState(false)
+  const [document, setDocument] = useState('')
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const nextErrors = validateLoginForm({ email, password })
+    const nextErrors = documentLogin ? {} : validateLoginForm({ email, password })
     setErrors(nextErrors)
 
     if (hasValidationErrors(nextErrors)) {
@@ -25,7 +28,8 @@ function Login({ onNavigate }) {
     setError('')
 
     try {
-      await signIn({ email, password })
+      if (documentLogin) await createWorkerAccessService().signInWithDocument(document, password)
+      else await signIn({ email, password })
     } catch (authError) {
       setError(authError.message)
     } finally {
@@ -40,12 +44,12 @@ function Login({ onNavigate }) {
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[#33443d]">Correo</span>
+            <span className="mb-2 block text-sm font-medium text-[#33443d]">{documentLogin ? 'DNI/NIE' : 'Correo'}</span>
           <Input
-            aria-label="Correo"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            aria-label={documentLogin ? 'DNI/NIE' : 'Correo'}
+            type={documentLogin ? 'text' : 'email'}
+            value={documentLogin ? document : email}
+            onChange={(event) => documentLogin ? setDocument(event.target.value) : setEmail(event.target.value)}
           />
           {errors.email && <p className="mt-1 text-sm text-[#991b1b]">{errors.email}</p>}
         </label>
@@ -77,6 +81,9 @@ function Login({ onNavigate }) {
       </form>
 
       <div className="mt-5 flex flex-col gap-2 text-center text-sm">
+        <button className="text-[var(--brand-navy)] hover:underline" type="button" onClick={() => { setDocumentLogin((value) => !value); setError(''); setErrors({}) }}>
+          {documentLogin ? 'Acceder con correo de administrador' : 'Acceder como trabajador con DNI/NIE'}
+        </button>
         <button className="text-[var(--brand-navy)] hover:underline" type="button" onClick={() => onNavigate('register')}>
           Crear cuenta
         </button>

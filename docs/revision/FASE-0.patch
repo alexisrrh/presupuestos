@@ -1,0 +1,441 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index 8c1ffdd..18446e5 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -59,6 +59,7 @@ function App() {
+     removeBudget,
+     refreshBudgets,
+     saveNewBudget,
++    updateBudgetStatus,
+   } = useBudgets(Boolean(session))
+ 
+   const handleShowToast = useCallback((nextToast) => {
+@@ -287,7 +288,7 @@ function App() {
+ 
+   const handleUpdateBudgetStatus = async (id, status) => {
+     try {
+-      await editBudget(id, { status })
++      await updateBudgetStatus(id, status)
+     } catch (error) {
+       logTechnicalError(error, 'Error actualizando estado')
+       handleShowToast({ message: getErrorMessage(error), type: 'error' })
+diff --git a/src/hooks/useBudgets.js b/src/hooks/useBudgets.js
+index 2e4cc80..db99a17 100644
+--- a/src/hooks/useBudgets.js
++++ b/src/hooks/useBudgets.js
+@@ -1,6 +1,17 @@
+ import { useCallback, useEffect, useState } from 'react'
+ import * as budgetService from '../services/supabase/budgetService'
+ 
++export async function updateAndRefreshBudgetStatus(
++  updateStatus,
++  refreshBudgets,
++  id,
++  status,
++) {
++  const updatedBudget = await updateStatus(id, status)
++  await refreshBudgets()
++  return updatedBudget
++}
++
+ function useBudgets(enabled = true) {
+   const [budgets, setBudgets] = useState([])
+   const [error, setError] = useState('')
+@@ -55,6 +66,17 @@ function useBudgets(enabled = true) {
+     [refreshBudgets],
+   )
+ 
++  const updateBudgetStatus = useCallback(
++    (id, status) =>
++      updateAndRefreshBudgetStatus(
++        budgetService.updateBudgetStatus,
++        refreshBudgets,
++        id,
++        status,
++      ),
++    [refreshBudgets],
++  )
++
+   const removeBudget = useCallback(
+     async (id) => {
+       await budgetService.deleteBudget(id)
+@@ -81,6 +103,7 @@ function useBudgets(enabled = true) {
+     refreshBudgets,
+     removeBudget,
+     saveNewBudget,
++    updateBudgetStatus,
+   }
+ }
+ 
+diff --git a/src/services/supabase/budgetService.js b/src/services/supabase/budgetService.js
+index 9f370e6..08c0f80 100644
+--- a/src/services/supabase/budgetService.js
++++ b/src/services/supabase/budgetService.js
+@@ -1,12 +1,12 @@
+ import { getNextBudgetNumber } from '../../utils/budgetNumber'
+-import { normalizeStoredBudget } from '../budgetStorage'
++import { BUDGET_STATUSES, normalizeStoredBudget } from '../budgetStorage'
+ import {
+   createClientId,
+   isUuid,
+   mapBudgetFromRows,
+   mapBudgetToPayload,
+ } from './budgetMappers'
+-import { ensureCurrentOrganization } from './organizationService'
++import { ensureCurrentOrganization, getCurrentOrganization } from './organizationService'
+ import { requireSupabase } from './supabaseServiceUtils'
+ 
+ async function fetchBudgetRows(client, organizationId, budgetId = null) {
+@@ -98,8 +98,70 @@ export async function createBudget(budget) {
+   return getBudgetById(data.id)
+ }
+ 
+-export async function updateBudget(id, budget) {
+-  return createBudget({ ...budget, id })
++export async function updateBudget(id, changes) {
++  const existingBudget = await getBudgetById(id)
++
++  if (!existingBudget) {
++    throw new Error('No se encontro el presupuesto que se quiere actualizar.')
++  }
++
++  return createBudget({
++    ...existingBudget,
++    ...changes,
++    id,
++    clientData: {
++      ...existingBudget.clientData,
++      ...(changes.clientData || {}),
++    },
++    conditions: {
++      ...existingBudget.conditions,
++      ...(changes.conditions || {}),
++    },
++    generalData: {
++      ...existingBudget.generalData,
++      ...(changes.generalData || {}),
++    },
++    technicalReport: {
++      ...existingBudget.technicalReport,
++      ...(changes.technicalReport || {}),
++    },
++  })
++}
++
++export async function updateBudgetStatus(id, status) {
++  if (!BUDGET_STATUSES.includes(status)) {
++    throw new Error('El estado del presupuesto no es valido.')
++  }
++
++  const client = requireSupabase()
++  const organization = await getCurrentOrganization()
++
++  if (!organization?.id) {
++    throw new Error('No se encontro una organizacion activa para actualizar el presupuesto.')
++  }
++
++  const { data, error } = await client
++    .from('budgets')
++    .update({ status })
++    .eq('id', id)
++    .eq('organization_id', organization.id)
++    .select('id, status, organization_id')
++
++  if (error) {
++    throw error
++  }
++
++  if (
++    !Array.isArray(data) ||
++    data.length !== 1 ||
++    data[0].id !== id ||
++    data[0].status !== status ||
++    data[0].organization_id !== organization.id
++  ) {
++    throw new Error('No se actualizo el presupuesto solicitado.')
++  }
++
++  return data[0]
+ }
+ 
+ export async function deleteBudget(id) {
+diff --git a/src/services/supabase/budgetService.test.js b/src/services/supabase/budgetService.test.js
+index b782e3e..7bfc390 100644
+--- a/src/services/supabase/budgetService.test.js
++++ b/src/services/supabase/budgetService.test.js
+@@ -1,10 +1,20 @@
+ import { beforeEach, describe, expect, it, vi } from 'vitest'
+-import { createBudget, updateBudget } from './budgetService'
++import {
++  createBudget,
++  duplicateBudget,
++  updateBudget,
++  updateBudgetStatus,
++} from './budgetService'
++import { getCurrentBudgetYear } from '../../utils/budgetNumber'
++import * as organizationService from './organizationService'
+ 
+ vi.mock('./organizationService', () => ({
+   ensureCurrentOrganization: vi.fn(() =>
+     Promise.resolve({ id: '11111111-1111-4111-8111-111111111111', name: 'Org' }),
+   ),
++  getCurrentOrganization: vi.fn(() =>
++    Promise.resolve({ id: '11111111-1111-4111-8111-111111111111', name: 'Org' }),
++  ),
+ }))
+ 
+ const rpcMock = vi.fn()
+@@ -14,12 +24,20 @@ class Query {
+   constructor(table) {
+     this.table = table
+     this.filters = []
++    this.operation = 'select'
++    this.payload = undefined
+   }
+ 
+   select() {
+     return this
+   }
+ 
++  update(payload) {
++    this.operation = 'update'
++    this.payload = payload
++    return this
++  }
++
+   eq(column, value) {
+     this.filters.push({ column, value })
+     return this
+@@ -35,7 +53,7 @@ class Query {
+   }
+ 
+   then(resolve, reject) {
+-    return Promise.resolve(queryHandler(this.table, this.filters)).then(resolve, reject)
++    return Promise.resolve(queryHandler(this)).then(resolve, reject)
+   }
+ }
+ 
+@@ -65,8 +83,8 @@ function createBudgetRow(overrides = {}) {
+ describe('supabase budgetService', () => {
+   beforeEach(() => {
+     vi.clearAllMocks()
+-    queryHandler.mockImplementation((table) => {
+-      if (table === 'budgets') {
++    queryHandler.mockImplementation((query) => {
++      if (query.table === 'budgets') {
+         return { data: [createBudgetRow()], error: null }
+       }
+ 
+@@ -82,10 +100,10 @@ describe('supabase budgetService', () => {
+   })
+ 
+   it('crea presupuesto nuevo delegando el numero definitivo en la RPC', async () => {
+-    queryHandler.mockImplementation((table, filters) => {
+-      if (table === 'budgets') {
++    queryHandler.mockImplementation((query) => {
++      if (query.table === 'budgets') {
+         if (
+-          filters.some(
++          query.filters.some(
+             (filter) =>
+               filter.column === 'id' &&
+               filter.value === '33333333-3333-4333-8333-333333333333',
+@@ -155,6 +173,197 @@ describe('supabase budgetService', () => {
+     )
+   })
+ 
++  it('rechaza editar un presupuesto inexistente sin convertirlo en un alta', async () => {
++    queryHandler.mockResolvedValue({ data: [], error: null })
++
++    await expect(
++      updateBudget('22222222-2222-4222-8222-222222222222', { status: 'accepted' }),
++    ).rejects.toThrow('No se encontro el presupuesto')
++
++    expect(rpcMock).not.toHaveBeenCalled()
++  })
++
++  it('duplica un presupuesto mediante el guardado completo existente', async () => {
++    const currentYear = getCurrentBudgetYear()
++    const sourceBudget = createBudgetRow({ budget_number: `PR-${currentYear}-0001` })
++    queryHandler.mockImplementation((query) => {
++      if (query.table === 'budgets') {
++        const requestedId = query.filters.find((filter) => filter.column === 'id')?.value
++        return { data: requestedId ? [] : [sourceBudget], error: null }
++      }
++      return { data: [], error: null }
++    })
++
++    await duplicateBudget(sourceBudget.id)
++
++    expect(rpcMock).toHaveBeenCalledWith(
++      'save_budget_with_details',
++      expect.objectContaining({
++        payload: expect.objectContaining({
++          budget: expect.objectContaining({
++            budget_number: `PR-${currentYear}-0002`,
++            id: null,
++            status: 'draft',
++          }),
++        }),
++      }),
++    )
++  })
++
++  it('conserva cliente, partidas, condiciones e importes al cambiar solo el estado', async () => {
++    const budgetRow = createBudgetRow({
++      client_address: 'Calle Cliente 1',
++      client_email: 'cliente@example.test',
++      client_name: 'Cliente de prueba',
++      client_phone: '600000000',
++      client_tax_id: 'B12345678',
++      conditions: { paymentTerms: '30 dias', notes: 'Mantener acceso libre' },
++      discount_rate: 10,
++      tax_rate: 21,
++      title: 'Reforma integral',
++    })
++    const chapterRow = {
++      id: '33333333-3333-4333-8333-333333333333',
++      budget_id: budgetRow.id,
++      description: 'Trabajos previos',
++      position: 0,
++      title: 'Preparacion',
++    }
++    const itemRow = {
++      chapter_id: chapterRow.id,
++      description: 'Desmontaje',
++      id: '44444444-4444-4444-8444-444444444444',
++      position: 0,
++      quantity: 2,
++      total: 250,
++      unit: 'ud',
++      unit_price: 125,
++    }
++
++    queryHandler.mockImplementation((query) => {
++      if (query.table === 'budgets') return { data: [budgetRow], error: null }
++      if (query.table === 'budget_chapters') return { data: [chapterRow], error: null }
++      if (query.table === 'budget_items') return { data: [itemRow], error: null }
++      return { data: [], error: null }
++    })
++
++    await updateBudget(budgetRow.id, { status: 'accepted' })
++
++    expect(rpcMock).toHaveBeenCalledWith(
++      'save_budget_with_details',
++      expect.objectContaining({
++        payload: expect.objectContaining({
++          budget: expect.objectContaining({
++            client_address: 'Calle Cliente 1',
++            client_email: 'cliente@example.test',
++            client_name: 'Cliente de prueba',
++            client_phone: '600000000',
++            client_tax_id: 'B12345678',
++            conditions: { paymentTerms: '30 dias', notes: 'Mantener acceso libre' },
++            discount_rate: 10,
++            status: 'accepted',
++            tax_rate: 21,
++            title: 'Reforma integral',
++          }),
++          chapters: [
++            expect.objectContaining({
++              description: 'Trabajos previos',
++              items: [
++                expect.objectContaining({
++                  description: 'Desmontaje',
++                  quantity: 2,
++                  total: 250,
++                  unit: 'ud',
++                  unit_price: 125,
++                }),
++              ],
++              title: 'Preparacion',
++            }),
++          ],
++        }),
++      }),
++    )
++  })
++
++  it('actualiza solo el estado en el presupuesto y la organizacion actuales', async () => {
++    queryHandler.mockImplementation((query) => {
++      if (query.table === 'budgets' && query.operation === 'update') {
++        return {
++          data: [
++            {
++              id: '22222222-2222-4222-8222-222222222222',
++              organization_id: '11111111-1111-4111-8111-111111111111',
++              status: 'accepted',
++            },
++          ],
++          error: null,
++        }
++      }
++
++      return { data: [], error: null }
++    })
++
++    await expect(
++      updateBudgetStatus('22222222-2222-4222-8222-222222222222', 'accepted'),
++    ).resolves.toEqual({
++      id: '22222222-2222-4222-8222-222222222222',
++      organization_id: '11111111-1111-4111-8111-111111111111',
++      status: 'accepted',
++    })
++
++    const updateQuery = fromMock.mock.results
++      .map((result) => result.value)
++      .find((query) => query.operation === 'update')
++    expect(updateQuery.payload).toEqual({ status: 'accepted' })
++    expect(updateQuery.filters).toEqual([
++      { column: 'id', value: '22222222-2222-4222-8222-222222222222' },
++      { column: 'organization_id', value: '11111111-1111-4111-8111-111111111111' },
++    ])
++    expect(organizationService.ensureCurrentOrganization).not.toHaveBeenCalled()
++    expect(rpcMock).not.toHaveBeenCalled()
++  })
++
++  it('rechaza un estado invalido sin escribir', async () => {
++    await expect(
++      updateBudgetStatus('22222222-2222-4222-8222-222222222222', 'archived'),
++    ).rejects.toThrow('no es valido')
++
++    expect(fromMock).not.toHaveBeenCalled()
++    expect(rpcMock).not.toHaveBeenCalled()
++  })
++
++  it('no crea una organizacion si no hay una sesion con membresia activa', async () => {
++    vi.mocked(organizationService.getCurrentOrganization).mockResolvedValueOnce(null)
++
++    await expect(
++      updateBudgetStatus('22222222-2222-4222-8222-222222222222', 'accepted'),
++    ).rejects.toThrow('No se encontro una organizacion activa')
++
++    expect(fromMock).not.toHaveBeenCalled()
++    expect(organizationService.ensureCurrentOrganization).not.toHaveBeenCalled()
++    expect(rpcMock).not.toHaveBeenCalled()
++  })
++
++  it('rechaza un presupuesto inexistente o inaccesible sin crear uno nuevo', async () => {
++    queryHandler.mockResolvedValue({ data: [], error: null })
++
++    await expect(
++      updateBudgetStatus('22222222-2222-4222-8222-222222222222', 'accepted'),
++    ).rejects.toThrow('No se actualizo el presupuesto solicitado.')
++
++    expect(rpcMock).not.toHaveBeenCalled()
++  })
++
++  it('propaga el fallo del servidor al actualizar el estado', async () => {
++    queryHandler.mockResolvedValue({ data: null, error: new Error('fallo update') })
++
++    await expect(
++      updateBudgetStatus('22222222-2222-4222-8222-222222222222', 'accepted'),
++    ).rejects.toThrow('fallo update')
++
++    expect(rpcMock).not.toHaveBeenCalled()
++  })
++
+   it('propaga errores de la RPC y no intenta inserts directos en budgets', async () => {
+     rpcMock.mockResolvedValue({ data: null, error: new Error('fallo rpc') })
+ 
+
