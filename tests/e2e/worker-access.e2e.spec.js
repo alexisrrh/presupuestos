@@ -44,6 +44,7 @@ test('alta, login DNI/NIE, cambio de contraseña y baja con sesión previa', asy
   await expect(adminPage.getByRole('heading', { name: 'Fichaje' })).toBeVisible()
   await adminPage.getByRole('button', { name: 'Registrar entrada' }).click()
   await expect(adminPage.getByRole('button', { name: 'Registrar salida' })).toBeVisible()
+  await adminPage.getByRole('button', { name: 'Perfil' }).click()
   await adminPage.getByLabel('Nueva contraseña').fill(changed)
   await adminPage.getByRole('button', { name: 'Cambiar contraseña' }).click()
   await expect(adminPage.getByText('Contraseña actualizada correctamente.')).toBeVisible()

@@ -337,10 +337,51 @@ En esta copia del repositorio no estaban disponibles `AGENTS.md`, `AGENTS-PRITEC
 - Control local posterior a la documentación: `npm run test:run` 29 archivos/216 pruebas, `npm run lint`, `npm run build` y `git diff --check`, todos código 0. El build conserva el aviso conocido de chunk >500 kB; no se aumentó el límite.
 - Pendientes de autorización: confirmar backups/Auth en lectura, aplicar el manifiesto remoto, publicar `worker-access`, publicar el frontend y definir el procedimiento de cuentas iniciales. No se ejecutó ninguna de esas acciones.
 
+### Fase 2G — experiencia de fichaje y calendario administrativo (24-11-2026)
+
+- Rama de trabajo: `codex/priteca-2g-jornadas-calendario`, creada sobre `codex/priteca-2f-fichajes-olvidados`. Se conservaron las migraciones, servicios, pruebas y evidencias de 2F; no se modificó Supabase remoto.
+- Área personal: se mantiene la hora oficial de servidor y el bloqueo de mutación de `useTimeTracking`; se añadió contador de duración en jornadas abiertas e historial, advertencia confirmable para cierres excepcionalmente cortos o reapertura inmediata, y el formulario de contraseña queda únicamente en «Perfil y seguridad». La navegación personal sigue siendo Inicio, Fichar, Historial y Perfil.
+- Jornadas administrativas: `WorkSessions` incorpora resumen de trabajadores/jornadas/incidencias/solicitudes pendientes, buscador, lista por trabajador, calendario mensual Europe/Madrid con estados abierto/cerrado/anulado, detalle de todos los tramos seleccionados y mensaje explícito de que un día sin registro no se clasifica como ausencia.
+- Pruebas unitarias: `npm run test:run` terminó `30 archivos, 218 pruebas, código 0`; `npm run lint`, `npm run build` y `git diff --check` terminaron con código 0. El aviso de chunk superior a 500 kB continúa siendo preexistente.
+- E2E dedicado `tests/e2e/phase2g-experience.e2e.spec.js`: **5/5**, código 0; verificó el panel/calendario y la vista personal con Perfil→Seguridad sin desbordamiento a 360×800, 375×812, 390×844 y 430×932. Capturas nuevas: `evidence/phase2g-worker-{360,375,390,430}.png`.
+- Regresión E2E completa, con fixtures ficticias restablecidas antes de ejecutar: **38/38**, código 0. Incluye las suites 2A–2F y el nuevo bloque 2G; se adaptó el caso de cambio de contraseña para abrir Perfil antes de editarla. La composición mantuvo red interna y volumen `priteca-e2e-compose-db-data`; no se publicaron puertos.
+- Una repetición posterior para capturar una vista administrativa de escritorio no pudo iniciar sesión tras varias ejecuciones que modificaron credenciales de fixtures (las pruebas terminaron antes de cargar la aplicación); no se cuenta como PASS ni se usa para sustituir la ejecución 38/38. La captura administrativa nueva queda pendiente; las capturas de escritorio previas de Jornadas se conservan sin atribuirles esta validación adicional.
+- Cobertura aún no acreditada en esta entrega: fixtures específicas de varios turnos del mismo día, jornada del día anterior, cruce de medianoche/DST y una corrección administrativa de una sola hora con datos preparados exclusivamente para 2G. La UI soporta múltiples tramos y correcciones existentes, pero estos escenarios no se declaran probados aquí.
+- **Estado de fase 2G: PENDIENTE DE CIERRE E2E COMPLETO.**
+
+### Fase 2F — solicitudes de fichaje olvidado (24-11-2026)
+
+- Rama de trabajo: `codex/priteca-2f-fichajes-olvidados`, basada en el estado publicado de PRITECA y conservando 1C–2E.
+- Implementación local añadida: `20261124123000_phase_2f_time_correction_requests.sql`, `timeCorrectionService`, formulario personal de solicitud y panel administrativo integrado en Jornadas. Las solicitudes están separadas de `work_sessions`, tienen RLS por solicitante/organización, deduplicación pendiente, revisión, resolución sin autoaprobación y auditoría de envío/aprobación/rechazo.
+- El fichaje normal sigue usando exclusivamente las RPC existentes y hora de servidor. No se añadieron vacaciones, permisos generales ni saldos.
+- Validación local de aplicación: `npm run test:run` 30 archivos/218 pruebas, `npm run lint`, `npm run build` y `git diff --check`, todos código 0. El aviso de chunk >500 kB continúa.
+- Validación SQL estructural en `priteca-pilot-rehearsal-db`: aplicación de `20261124123000_phase_2f_time_correction_requests.sql` código 0 y `supabase/tests/phase2f_time_correction_requests.sql` código 0 (10 aserciones de tablas, RPC y ACL; transacción con rollback).
+- Pendiente: aplicar la migración solo en el entorno E2E privado y ejecutar pruebas SQL/RLS y Playwright de empleado→solicitud→admin→aprobación/rechazo, duplicados, revisión obsoleta, doble resolución, DST, medianoche, archivados y respuesta perdida. La fase 2F queda **PENDIENTE**, no aprobada.
+
+### Fase 2F — validación E2E y seguridad (24-11-2026)
+
+- La migración `20261124123000_phase_2f_time_correction_requests.sql` se aplicó con `ON_ERROR_STOP=1` en el entorno E2E privado `priteca-e2e-db`; no se aplicó a ningún destino remoto. El volumen `priteca-e2e-compose-db-data` se conservó y la red `priteca-e2e-compose-net` continúa `internal`, sin puertos de host.
+- `phase2f_time_correction_requests.sql`: código 0, 10 aserciones estructurales. `phase2f_time_correction_requests_behavior.sql`: código 0, transacción con rollback y aserciones para employee/admin/otra organización/anon, solicitud pendiente sin mutación, duplicado `23505`, archivado `42501`, autoaprobación `40001`, aprobación/rechazo, revisión +1, auditoría única con actor admin, jornada completa, cruce de medianoche y transición DST de Europe/Madrid.
+- `phase2f_time_correction_concurrency.ps1`: código 0; dos procesos PostgreSQL independientes (PID A=31404, PID B=32792 en la ejecución registrada), A confirmó manteniendo la transacción abierta, B esperó y recibió el conflicto `40001`; estado final `approved`, revisión de jornada `2` y una auditoría `admin_corrected`.
+- Regresiones SQL: `phase2a_time_tracking.sql`, `phase2b_personal_time_tracking_read.sql`, `phase2c_admin_work_sessions.sql` (tras limpiar fixtures dedicados), `phase2e_time_reports.sql` y ambas suites 2F terminaron con código 0. La primera ejecución de 2C quedó contaminada por una jornada E2E persistente; el seed dedicado se amplió para limpiar solicitudes/auditoría 2F y la repetición pasó.
+- Playwright dedicado `tests/e2e/time-correction-requests.e2e.spec.js`: **6/6**, código 0. Suite completa final: **33/33**, código 0. Incluye empleado→solicitud→cierre de sesión→admin→aprobación→consulta posterior, respuesta perdida recuperada mediante lectura y panel móvil sin desbordamiento a 360×800, 375×812, 390×844 y 430×932. Capturas: `evidence/phase1e-e2e/phase2f-employee-approved.png` y `phase2f-request-{360,375,390,430}x*.png`.
+- Defectos corregidos durante la verificación: el artefacto E2E se reconstruyó con `VITE_SUPABASE_URL=http://kong:8000` y clave pública ficticia para que el navegador del runner alcanzara Kong; el título visual «Fichaje olvidado» dejó de ser un encabezado para no colisionar con selectores existentes. No se cambiaron permisos ni el contrato SQL.
+- Controles finales: `npm run test:run` 30 archivos/218 pruebas, `npm run lint`, `npm run build` y `git diff --check`, todos código 0. El build mantiene el aviso conocido de chunk >500 kB.
+- **Estado: FASE 2F APROBADA EN E2E LOCAL PRIVADO.** Esta aprobación es exclusivamente local; no implica Supabase remoto ni producción.
+
 ### Complemento de inspección remota: recuperación, Auth y cuentas (24-11-2026)
 
 - El conector Supabase disponible no ofrece una operación de lectura para inventario, fecha o retención de backups. No se presupone que exista una copia recuperable; debe comprobarse en el panel de Database/Backups antes de cualquier escritura. La restauración requiere acceso de propietario/administrador del proyecto y una ventana aprobada; no se ejecutó.
 - Tampoco se expone mediante las herramientas disponibles la configuración gestionada de GoTrue (proveedores, `site_url`, redirecciones, recuperación, contraseña y rate limits). `auth.config` no existe como tabla consultable. Se contrastó únicamente la referencia local de `supabase/config.toml` y los requisitos de `worker-access`, sin copiar valores al destino.
 - Consulta agregada remota: 5 usuarios Auth, 3 perfiles, 26 organizaciones, 5 roles `owner`, 0 `admin` y 0 `member`. No se extrajeron correos, UUID ni datos personales; Daniel y Alexis no pueden identificarse inequívocamente todavía.
 - La propuesta final y sus datos pendientes están en `docs/PRITECA-PILOTO-PUESTA-EN-MARCHA.md`. No se realizaron escrituras, creación de cuentas, invitaciones, cambios de roles ni despliegues.
+
+### Cierre de Fase 2G (24-11-2026)
+
+- La contaminación de Auth E2E se resolvió haciendo que `.local/priteca-e2e/run-playwright.ps1` ejecute `seed-fixtures.sql` antes de cada suite. El artefacto del navegador se construyó para E2E con `VITE_SUPABASE_URL=http://kong:8000` y la clave pública ficticia; el build normal posterior se verificó por separado.
+- `supabase/tests/phase2g_calendar_cases.sql`: código 0 con rollback. Verifica dos turnos, día sin registro, jornada anulada, jornada previa abierta, medianoche, DST, correcciones solo de entrada/salida con segundos y auditoría, y administrador con ficha propia capaz de fichar.
+- `tests/e2e/phase2g-experience.e2e.spec.js`: 6/6, código 0. Incluye confirmación real de jornada corta, calendario/panel y comprobación geométrica de que Perfil no queda bajo la navegación inferior. Capturas: `evidence/phase1e-e2e/phase2g-admin-desktop.png` y `phase2g-worker-{360,375,390,430}.png`.
+- Suite Playwright completa: 39/39 en la primera ejecución y 39/39 en la segunda, ambos códigos 0, con reset de fixtures antes de cada una. Regresiones SQL 2C, 2E y 2F: código 0. Unitarias 218/218, lint, build y `git diff --check`: código 0. Se mantiene el aviso preexistente de chunk superior a 500 kB.
+- Defectos corregidos: duración viva calculada al pulsar (no desde un render obsoleto) y desplazamiento instantáneo/seguro al Perfil para no ocultar el formulario bajo la barra inferior.
+- **FASE 2G: APROBADA EN E2E LOCAL PRIVADO.** Sin cambios remotos ni producción.
 
