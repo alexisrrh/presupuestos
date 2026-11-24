@@ -1,0 +1,98 @@
+{
+  "verified_at": "2026-11-24T11:51:26.974Z",
+  "source_commit": "b34776a8e1549350487a5711c073f085d4b9595b",
+  "project_ref": "yugpxenxjpjicxyznlxz",
+  "migration_history": {
+    "historical_count": 10,
+    "newly_applied_count": 28,
+    "total": 38,
+    "versions_and_names_match_repository": true,
+    "new_entries_normalized_after_exact_sql_comparison": true,
+    "historical_entries_unchanged": true
+  },
+  "catalog": {
+    "technical_roles_safe": true,
+    "labor_tables_with_rls": 6,
+    "critical_public_rpcs_checked": 7,
+    "anonymous_execute_denied": true,
+    "client_work_session_dml_denied": true,
+    "client_worker_update_delete_denied": true,
+    "client_provision_table_access_denied": true
+  },
+  "transactional_smoke": {
+    "result": "PASS",
+    "rolled_back": true,
+    "http_login_test": false,
+    "employee_role_test": false,
+    "temporary_workers_remaining": 0,
+    "temporary_sessions_remaining": 0,
+    "audit_rows_remaining": 0,
+    "sequence_values_may_be_consumed": true
+  },
+  "preservation": [
+    {
+      "object": "auth_users",
+      "before": 6,
+      "after": 6,
+      "fingerprint_identical": true
+    },
+    {
+      "object": "profiles",
+      "before": 4,
+      "after": 4,
+      "fingerprint_identical": true
+    },
+    {
+      "object": "organizations",
+      "before": 26,
+      "after": 26,
+      "fingerprint_identical": true
+    },
+    {
+      "object": "organization_members",
+      "before": 6,
+      "after": 6,
+      "fingerprint_identical": true
+    },
+    {
+      "object": "company_settings",
+      "before": 5,
+      "after": 5,
+      "fingerprint_identical": true
+    },
+    {
+      "object": "clients",
+      "before": 0,
+      "after": 0,
+      "fingerprint_identical": true
+    },
+    {
+      "object": "budgets",
+      "before": 2,
+      "after": 2,
+      "fingerprint_identical": true
+    },
+    {
+      "object": "budget_chapters",
+      "before": 0,
+      "after": 0,
+      "fingerprint_identical": true
+    },
+    {
+      "object": "budget_items",
+      "before": 0,
+      "after": 0,
+      "fingerprint_identical": true
+    }
+  ],
+  "storage": {
+    "bucket": "company-assets",
+    "private": true
+  },
+  "limitations": [
+    "No full database backup was created.",
+    "Security advisors retain documented warnings; this is not a global security certification.",
+    "Auth Site URL and redirect allowlist change await action-time confirmation.",
+    "No real user's HTTP login or full production provisioning was tested."
+  ]
+}

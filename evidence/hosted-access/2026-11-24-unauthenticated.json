@@ -1,0 +1,58 @@
+{
+  "checked_at": "2026-11-24T11:49:56.321Z",
+  "site_url": "https://priteca.com/",
+  "edge_url": "https://yugpxenxjpjicxyznlxz.supabase.co/functions/v1/worker-access",
+  "checks_are_unauthenticated": true,
+  "public_build": {
+    "page_status": 200,
+    "bundle_status": 200,
+    "bundle_url": "https://priteca.com/assets/index-D567ceIM.js",
+    "bundle_sha256": "9ba16f33331959fa04399fb0e3cfed0af74fb7a5d692a6dad971390242f8543b",
+    "expected_project": true,
+    "public_key_kind": "publishable"
+  },
+  "results": [
+    {
+      "name": "edge_preflight",
+      "http_status": 204,
+      "cors_origin_allowed": true,
+      "cors_requested_headers_allowed": true,
+      "cors_post_allowed": true,
+      "pass": true
+    },
+    {
+      "name": "edge_no_session",
+      "http_status": 401,
+      "unauthorized": true,
+      "cors_origin_allowed": true,
+      "pass": true
+    },
+    {
+      "name": "edge_invalid_session",
+      "http_status": 401,
+      "unauthorized": true,
+      "cors_origin_allowed": true,
+      "pass": true
+    },
+    {
+      "name": "edge_nonexistent_worker_login",
+      "http_status": 401,
+      "generic_invalid_credentials": true,
+      "cors_origin_allowed": true,
+      "pass": true
+    },
+    {
+      "name": "auth_settings",
+      "http_status": 200,
+      "email_provider_enabled": true,
+      "pass": true
+    },
+    {
+      "name": "clock_in_without_session",
+      "http_status": 401,
+      "permission_denied": true,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

@@ -1,11 +1,24 @@
-// Narrow server-side worker access operations for the private E2E stack.
-const authUrl = Deno.env.get('GOTRUE_INTERNAL_URL')!
-const restUrl = Deno.env.get('REST_INTERNAL_URL')!
-const jwtSecret = Deno.env.get('JWT_SECRET')!
+// Narrow server-side worker access operations for managed Supabase and private E2E.
+const supabaseUrl = (Deno.env.get('SUPABASE_URL') || '').replace(/\/$/, '')
+const internalAuthUrl = Deno.env.get('GOTRUE_INTERNAL_URL') || ''
+const internalRestUrl = Deno.env.get('REST_INTERNAL_URL') || ''
+const authUrl = internalAuthUrl || (supabaseUrl ? supabaseUrl + '/auth/v1' : '')
+const restUrl = internalRestUrl || (supabaseUrl ? supabaseUrl + '/rest/v1' : '')
+const managedServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+const jwtSecret = Deno.env.get('JWT_SECRET') || ''
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
+const corsHeaders = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
+  'access-control-allow-methods': 'POST, OPTIONS',
+}
 const json = (value: unknown) => JSON.stringify(value)
 const b64url = (value: string) => btoa(value).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
 async function serviceKey() {
+  // Hosted secrets are supplied by Supabase, never copied to the frontend.
+  if (managedServiceKey) return managedServiceKey
+  // The signed token is only a fallback for the explicitly configured private stack.
+  if (!jwtSecret || !internalAuthUrl || !internalRestUrl) throw new Error('worker_access_not_configured')
   const now = Math.floor(Date.now() / 1000)
   const header = b64url(json({ alg: 'HS256', typ: 'JWT' }))
   const payload = b64url(json({ role: 'service_role', iat: now, exp: now + 60 }))
@@ -13,7 +26,7 @@ async function serviceKey() {
   const signed = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(header + '.' + payload))
   return header + '.' + payload + '.' + b64url(String.fromCharCode(...new Uint8Array(signed)))
 }
-const response = (status: number, body: Record<string, unknown>) => new Response(json(body), { status, headers: { 'content-type': 'application/json' } })
+const response = (status: number, body: Record<string, unknown>) => new Response(json(body), { status, headers: { ...corsHeaders, 'content-type': 'application/json' } })
 const fail = (status: number, code: string) => response(status, { error: code })
 const uuid = (value: unknown) => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value)
 const documentValue = (value: unknown) => typeof value === 'string' ? value.toUpperCase().replace(/[\s.-]/g, '') : ''
@@ -67,7 +80,7 @@ async function login(body: Record<string, unknown>) {
   const document = documentValue(body.document); if (!document || typeof body.password !== 'string') return fail(401, 'invalid_credentials')
   const users = await adminUsersByEmail(emailFor(document)); if (users.length !== 1) return fail(401, 'invalid_credentials')
   const result = await fetch(authUrl + '/token?grant_type=password', { method: 'POST', headers: { apikey: anonKey, 'content-type': 'application/json' }, body: json({ email: emailFor(document), password: body.password }) })
-  if (!result.ok) return fail(401, 'invalid_credentials'); return new Response(await result.text(), { status: 200, headers: { 'content-type': 'application/json' } })
+  if (!result.ok) return fail(401, 'invalid_credentials'); return new Response(await result.text(), { status: 200, headers: { ...corsHeaders, 'content-type': 'application/json' } })
 }
 async function changePassword(body: Record<string, unknown>, token: string) {
   if (typeof body.password !== 'string' || body.password.length < 8) return fail(422, 'invalid_request')
@@ -87,12 +100,13 @@ async function resetWorkerPassword(body: Record<string, unknown>, token: string,
   return result.ok ? response(200, { status: 'reset' }) : fail(400, 'password_reset_failed')
 }
 Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders })
   if (request.method !== 'POST') return fail(405, 'method_not_allowed')
   let body: Record<string, unknown>; try { body = await request.json() } catch { return fail(400, 'invalid_json') }
-  if (body.operation === 'login') return login(body)
-  const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || ''; const actor = token ? await actorFor(token) : null
-  if (!actor?.id) return fail(401, 'unauthorized')
   try {
+    if (body.operation === 'login') return await login(body)
+    const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || ''; const actor = token ? await actorFor(token) : null
+    if (!actor?.id) return fail(401, 'unauthorized')
     if (body.operation === 'enable_access') return await enableAccess(body, token, actor)
     if (body.operation === 'change_password') return await changePassword(body, token)
     if (body.operation === 'reset_worker_password') return await resetWorkerPassword(body, token, actor)
