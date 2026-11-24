@@ -1,4 +1,57 @@
-# PRITECA Gestión — preparación local del piloto
+# PRITECA Gestión — puesta en marcha del piloto
+
+## Puesta en marcha remota — estado actual (24-11-2026)
+
+**Backend aplicado y comprobaciones remotas acotadas: PASS.** El frontend está publicado, las 28 migraciones del manifiesto están aplicadas y `worker-access` está activa. El smoke SQL y las seis comprobaciones HTTP sin sesión han pasado. Queda pendiente confirmar expresamente y guardar los dos ajustes de URL de Auth descritos abajo. Este resultado no equivale a login HTTP con un usuario real ni a una suite E2E remota completa. Esta sección prevalece sobre la preparación histórica que se conserva debajo.
+
+| Componente | Estado actual |
+| --- | --- |
+| Código y frontend | PR #1 fusionado; `main` en `78eeea7b329b57e98ac94494b89ecfd362dd8732`, con el mismo árbol que `b34776a8e1549350487a5711c073f085d4b9595b`. Vercel `READY` en producción, deployment `dpl_C5P9o8ABfZsz3XYmx9863tCtPFo7`. |
+| Dominio | `https://priteca.com/` público con HTTPS y DNS comprobados. Se conserva el correo de Google Workspace. |
+| Configuración compilada | HTML y `/assets/index-D567ceIM.js`: HTTP 200 sin autenticación ni bypass. Host Supabase del destino correcto, clave `publishable`, fallback local desactivado y sin claves administrativas literales detectadas. |
+| Migraciones | 28/28 del manifiesto aplicadas. Historial final 38/38: las diez históricas y las 28 nuevas coinciden exactamente en versión y nombre con el repositorio. |
+| Función Edge | `worker-access` desplegada, estado `ACTIVE`, versión 1, ID `f83a0e62-100e-494b-82e9-a54ee1a70f2b`, con `verify_jwt = false`. Adaptación gestionada/CORS con 10 pruebas Node correctas; comprobaciones HTTP sin sesión 6/6 PASS. |
+| Seguridad SQL comprobada | Dos roles técnicos `NOLOGIN` y `NOBYPASSRLS`; seis tablas laborales con RLS; siete RPC críticas comprobadas con ejecución denegada a `anon`, concedida a `authenticated` y `search_path` fijo. DML directo de jornadas/provisiones y UPDATE directo de trabajadores denegados. |
+| Smoke transaccional | `supabase/tests/phase2_managed_smoke.sql` ejecutado en una sola solicitud: `phase2_managed_smoke = PASS`. Tras ROLLBACK, trabajadores, jornadas, las tres auditorías y provisiones continúan en cero. |
+| Auth | `Site URL` sigue en `http://localhost:5173`. La revisión automática rechazó guardar `https://priteca.com`. Quedan preparados, sin guardar, el cambio de `Site URL` a `https://priteca.com` y la adición de `https://priteca.com` a las URL de redirección permitidas; ambos requieren confirmación expresa. |
+| Recuperación por correo | No se declara validada: falta un recorrido administrativo completo de UI y no consta SMTP propio configurado. El restablecimiento administrativo de trabajadores es un flujo distinto. |
+| Storage | `company-assets` creado y verificado privado (`public = false`). La creación reproduce la configuración histórica ausente; la migración 1C endurece sus políticas, pero no crea el bucket. |
+
+La herramienta de aplicación asignó inicialmente versiones correspondientes al momento de ejecución. Se normalizaron únicamente las 28 entradas recién creadas a las versiones del repositorio, tras comprobar la igualdad de sus sentencias SQL. Las diez entradas históricas quedaron intactas; el contraste final de versión/nombre devuelve coincidencia exacta en las 38 entradas.
+
+La adaptación de hosting gestionado, el smoke y estas evidencias se incorporan a la siguiente entrega versionada, posterior al frontend base indicado en la tabla. El commit que incluya estos archivos identificará esa entrega; no se anticipa un SHA final.
+
+### Evidencias remotas y alcance
+
+- El smoke SQL usa `SET LOCAL ROLE authenticated` y claims de actores existentes suministrados por GUC. Comprueba aislamiento de presupuestos/configuración, alta de un trabajador sintético, vínculo por RPC, entrada/salida, revisiones, actores de auditoría e informe. Todas las filas de prueba se revierten; no se crean cuentas Auth ni se cambian contraseñas o membresías. Las secuencias de auditoría pueden consumir números aunque las filas se reviertan; no se restauraron secuencias.
+- La [evidencia de base de datos gestionada](../evidence/hosted-access/2026-11-24-managed-database.json) recoge el resultado del smoke, la preservación y las comprobaciones posteriores del destino.
+- HTTP sin sesión, 24-11-2026 a las 12:49:56 (Europe/Madrid): preflight Edge 204 con CORS; operación protegida sin JWT 401; JWT inválido 401; login de trabajador ficticio 401 con error genérico `invalid_credentials`; configuración Auth 200 con proveedor email habilitado; `clock_in_current_worker` sin sesión 401/`42501`. Resultado 6/6 PASS, código de salida 0. [Evidencia HTTP sin sesión](../evidence/hosted-access/2026-11-24-unauthenticated.json); comprobación reproducible: `scripts/check-hosted-access.mjs`.
+- Estas pruebas no acreditan un login HTTP de Daniel, Alexis o un trabajador real, ni un recorrido completo de navegador contra producción. Los 27 E2E privados históricos siguen siendo evidencia local, separada del smoke gestionado y de los controles HTTP anteriores.
+
+### Avisos de seguridad y límites del informe
+
+La consulta fresca de advisors posterior al DDL, a las 12:50:30 (Europe/Madrid), conserva avisos: INFO de RLS sin políticas en `worker_access_provisions` (tabla sin ACL de cliente y con denegación directa intencionada); cinco WARN de `search_path` mutable (cuatro funciones históricas y el trigger `workers_increment_revision`, que incrementa la revisión sin consultas); nueve avisos de funciones `SECURITY DEFINER` con ejecución para `anon` y trece para `authenticated` (incluyen triggers, helpers y wrappers). La protección contra contraseñas filtradas continúa desactivada, como antes del despliegue. Los controles de catálogo de las siete RPC críticas y el smoke pasaron, pero no se presenta el conjunto como una auditoría sin avisos ni como una certificación global. No se añadieron migraciones para silenciar estos avisos.
+
+- **CSV:** `src/services/timeTracking/timeReportService.js`, en `reportToCsv`, exporta `clock_in_at`/`clock_out_at` como los instantes ISO recibidos de PostgreSQL, sin convertirlos a hora local, aunque los encabezados indican `Europe/Madrid`. La presentación horaria del CSV conserva esta limitación; no se declara corregida.
+- **Jornadas anuladas:** `admin_time_report` las excluye de los totales, pero no las elimina expresamente del detalle. Si cumplen el filtro temporal, pueden aparecer en `rows` con cero segundos. La prueba histórica acredita exclusión del total, no desaparición de todo el informe.
+
+### Configuración de la función gestionada
+
+La adaptación utiliza `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` suministradas por el entorno de servidor de Supabase. No se copian claves administrativas al frontend. Las rutas `GOTRUE_INTERNAL_URL`, `REST_INTERNAL_URL` y `JWT_SECRET` quedan como compatibilidad del E2E privado, no como requisitos a reproducir en el hosting gestionado.
+
+`verify_jwt = false` permite que la petición de login DNI/NIE llegue a la función sin una sesión previa; las operaciones protegidas siguen comprobando el JWT mediante Auth y aplican sus controles de autorización. La función ya está publicada y las comprobaciones remotas sin sesión acreditan CORS y los rechazos indicados arriba. No se ha validado en este despliegue un login HTTP con credenciales reales.
+
+### Preservación, recuperación y confirmación pendiente
+
+La comparación posterior devuelve **PASS exacto en los nueve grupos de recuentos y huellas**: 6 usuarios Auth, 4 perfiles, 26 organizaciones, 6 membresías, 5 configuraciones empresariales, 0 clientes, 2 cabeceras de presupuesto y 0 capítulos/partidas. Se preservó la base observada antes de la actualización. Estas huellas permiten contrastar preservación, pero no restaurar datos; no constituyen una copia recuperable.
+
+El usuario autorizó avanzar sin convertir una copia completa ni otro ensayo de restauración en un bloqueo. No se declara creada una copia recuperable. La única confirmación adicional pendiente corresponde a guardar los dos ajustes de Auth preparados: `Site URL = https://priteca.com` y añadir `https://priteca.com` a las redirecciones permitidas. La revisión automática rechazó el guardado de la URL de sitio y no se eludió; no se presenta ninguno de los dos ajustes como aplicado. Migraciones, función y publicación ya estaban autorizadas y se ejecutaron.
+
+Ante un fallo remoto, registrar la operación y su resultado antes de reintentar. Volver a un deployment anterior de Vercel no revierte la base de datos; no ejecutar resets, borrados ni restauraciones destructivas como respuesta automática. El cierre debe distinguir las comprobaciones remotas realmente ejecutadas de las pruebas E2E locales históricas.
+
+## Registro histórico de la preparación (24-11-2026)
+
+Las secciones siguientes conservan las observaciones y propuestas anteriores al avance descrito arriba. Las menciones a una publicación todavía inexistente, cuentas no identificadas o autorizaciones por solicitar son históricas, no instrucciones actuales.
 
 Estado: procedimiento preparado y comprobado en el E2E local privado. No implica publicación ni validación de un destino remoto.
 
@@ -69,7 +122,7 @@ La inspección remota del 24-11-2026 encontró aplicadas exactamente las diez pr
 | Versión y ruta | Orden/dependencias | Objetos afectados | Datos/permisos | Efecto en presupuestos | Si falla |
 | --- | --- | --- | --- | --- | --- |
 | `20261113102152_phase_1c_roles_workers_security.sql` | 1; línea histórica 10 | `organization_members`, `workers`, `worker_audit_log`, helpers y triggers | Crea roles/ACL/RLS laborales | Ningún cambio de filas de presupuestos | Detener antes de abrir la UI; conservar historial y registrar SQLSTATE |
-| `20261113105649_phase_1c_bootstrap_storage_hardening.sql` | 2; depende de Storage oficial y migración 1C | Storage policies y funciones de bootstrap | Endurece permisos y garantiza el bucket `company-assets` usado por `companyService` para logos | Sin cambio de presupuestos | Verificar Storage oficial; no crear tablas parciales |
+| `20261113105649_phase_1c_bootstrap_storage_hardening.sql` | 2; depende de Storage oficial y migración 1C | Storage policies y funciones de bootstrap | Endurece políticas de `company-assets`; no crea el bucket. Su creación estaba en la migración histórica `20260719190000_release_1_business_data.sql` | Sin cambio de presupuestos | Verificar Storage oficial; no crear tablas parciales |
 | `20261113112928_phase_1c_acl_membership_hardening.sql` | 3; depende de roles 1C | ACL/RLS de membresías y auditoría laboral | Revoca DML directo y ajusta políticas | Sin cambio de presupuestos | Rollback transaccional de esta migración |
 | `20261113124756_phase_1d_worker_revision_concurrency.sql` | 4; depende de `workers` | `workers.revision`, trigger y RPC de revisión | Revisión optimista | Sin cambio de presupuestos | No habilitar edición laboral |
 | `20261113125306_phase_1d_worker_general_revision_update.sql` | 5; depende de revisión | RPC general de actualización | Ejecución solo `authenticated` | Sin cambio | Detener y conservar versión anterior |
@@ -125,7 +178,7 @@ Antes de asignar funciones deben identificarse inequívocamente, mediante el pro
 
 La entrega de credenciales temporales será manual e individual, usando el flujo de habilitación ya implementado: administrador autenticado → provisión → cuenta Auth → vinculación auditada → entrega por canal seguro acordado. No se crean cuentas ni se envían credenciales durante esta inspección.
 
-## Acciones pendientes de autorización
+## Autorizaciones planteadas en la preparación inicial (histórico)
 
 1. Autorizar una segunda inspección remota de lectura para confirmar Auth (URL de sitio, redirecciones y proveedores) y copias/retención desde el panel, sin descifrar secretos.
 2. Autorizar la aplicación del manifiesto de 28 migraciones en el proyecto `yugpxenxjpjicxyznlxz`, con ventana, responsable y copia verificada; no ejecutar hasta esa autorización.
@@ -156,6 +209,7 @@ La entrega de credenciales temporales será manual e individual, usando el flujo
 
 Si una comprobación falla, detener el runner/servicio del piloto desde su composición, conservar los volúmenes y no ejecutar `reset`, `prune`, borrados ni rollback destructivo. Registrar el comando, el código y la primera comprobación fallida antes de corregir. No abrir el destino a usuarios hasta resolverla.
 
-## Estado comprobado y pendientes
+## Estado comprobado al terminar la preparación inicial (histórico)
 
 Comprobado localmente: tests unitarios, lint, build, migraciones y SQL de seguridad en PostgreSQL E2E, y suites Playwright privadas de fases 1E–2E. Pendiente: credenciales, URL, configuración Auth/Storage, migraciones y permisos del destino de instalación; todo ello permanece **no comprobado** hasta autorización explícita y consulta del destino correcto.
+
