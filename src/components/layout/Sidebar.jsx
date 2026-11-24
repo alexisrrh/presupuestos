@@ -1,4 +1,4 @@
-import { FilePlus2, Files, Home, Settings } from 'lucide-react'
+import { BarChart3, CalendarClock, Clock3, FilePlus2, Files, Home, Settings, Users } from 'lucide-react'
 import {
   COMPANY_NAME,
   COMPANY_TAGLINE,
@@ -8,8 +8,12 @@ import {
 
 const navigation = [
   { id: 'dashboard', label: 'Inicio', icon: Home },
+  { id: 'time-tracking', label: 'Mi fichaje', icon: Clock3 },
   { id: 'new-budget', label: 'Nuevo presupuesto', icon: FilePlus2 },
   { id: 'budgets', label: 'Presupuestos', icon: Files },
+  { id: 'workers', label: 'Trabajadores', icon: Users },
+  { id: 'work-sessions', label: 'Jornadas', icon: CalendarClock },
+  { id: 'work-reports', label: 'Informes', icon: BarChart3 },
   { id: 'settings', label: 'Configuracion', icon: Settings },
 ]
 

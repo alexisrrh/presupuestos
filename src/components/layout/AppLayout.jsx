@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { COMPANY_NAME, LOGO_ISOTYPE } from '../../config/branding'
 import Header from './Header'
+import MobileBottomNav from './MobileBottomNav'
 import Sidebar from './Sidebar'
 
 function AppLayout({
@@ -78,9 +79,10 @@ function AppLayout({
             title="Presupuestos de obra"
           />
 
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <main className="flex-1 px-4 py-6 pb-28 sm:px-6 lg:px-8 lg:py-8">
             <div className="mx-auto w-full max-w-6xl">{children}</div>
           </main>
+          <MobileBottomNav activePage={activePage} onNavigate={handleNavigate} />
         </div>
       </div>
     </div>

@@ -1,12 +1,12 @@
 import { getNextBudgetNumber } from '../../utils/budgetNumber'
-import { normalizeStoredBudget } from '../budgetStorage'
+import { BUDGET_STATUSES, normalizeStoredBudget } from '../budgetStorage'
 import {
   createClientId,
   isUuid,
   mapBudgetFromRows,
   mapBudgetToPayload,
 } from './budgetMappers'
-import { ensureCurrentOrganization } from './organizationService'
+import { ensureCurrentOrganization, getCurrentOrganization } from './organizationService'
 import { requireSupabase } from './supabaseServiceUtils'
 
 async function fetchBudgetRows(client, organizationId, budgetId = null) {
@@ -98,8 +98,70 @@ export async function createBudget(budget) {
   return getBudgetById(data.id)
 }
 
-export async function updateBudget(id, budget) {
-  return createBudget({ ...budget, id })
+export async function updateBudget(id, changes) {
+  const existingBudget = await getBudgetById(id)
+
+  if (!existingBudget) {
+    throw new Error('No se encontro el presupuesto que se quiere actualizar.')
+  }
+
+  return createBudget({
+    ...existingBudget,
+    ...changes,
+    id,
+    clientData: {
+      ...existingBudget.clientData,
+      ...(changes.clientData || {}),
+    },
+    conditions: {
+      ...existingBudget.conditions,
+      ...(changes.conditions || {}),
+    },
+    generalData: {
+      ...existingBudget.generalData,
+      ...(changes.generalData || {}),
+    },
+    technicalReport: {
+      ...existingBudget.technicalReport,
+      ...(changes.technicalReport || {}),
+    },
+  })
+}
+
+export async function updateBudgetStatus(id, status) {
+  if (!BUDGET_STATUSES.includes(status)) {
+    throw new Error('El estado del presupuesto no es valido.')
+  }
+
+  const client = requireSupabase()
+  const organization = await getCurrentOrganization()
+
+  if (!organization?.id) {
+    throw new Error('No se encontro una organizacion activa para actualizar el presupuesto.')
+  }
+
+  const { data, error } = await client
+    .from('budgets')
+    .update({ status })
+    .eq('id', id)
+    .eq('organization_id', organization.id)
+    .select('id, status, organization_id')
+
+  if (error) {
+    throw error
+  }
+
+  if (
+    !Array.isArray(data) ||
+    data.length !== 1 ||
+    data[0].id !== id ||
+    data[0].status !== status ||
+    data[0].organization_id !== organization.id
+  ) {
+    throw new Error('No se actualizo el presupuesto solicitado.')
+  }
+
+  return data[0]
 }
 
 export async function deleteBudget(id) {

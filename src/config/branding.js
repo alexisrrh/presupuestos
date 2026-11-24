@@ -1,8 +1,9 @@
-import logoHorizontal from '../assets/branding/priteca-logo-horizontal.jpeg'
+import logoHorizontal from '../assets/branding/PRITECA_logo_OEPM.png'
 import logoIsotype from '../assets/branding/priteca-isotipo-transparent.png'
 
 export const APP_NAME = 'PRITECA Presupuestos'
 export const COMPANY_NAME = 'PRITECA'
+export const COMPANY_LEGAL_NAME = 'Proyectos de Ingeniería Técnica y Construcción Avanzada, S. L.'
 export const COMPANY_TAGLINE =
   'Proyectos de Ingeniería Técnica y Construcción Avanzada'
 

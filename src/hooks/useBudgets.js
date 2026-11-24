@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import * as budgetService from '../services/supabase/budgetService'
 
+export async function updateAndRefreshBudgetStatus(
+  updateStatus,
+  refreshBudgets,
+  id,
+  status,
+) {
+  const updatedBudget = await updateStatus(id, status)
+  await refreshBudgets()
+  return updatedBudget
+}
+
 function useBudgets(enabled = true) {
   const [budgets, setBudgets] = useState([])
   const [error, setError] = useState('')
@@ -55,6 +66,17 @@ function useBudgets(enabled = true) {
     [refreshBudgets],
   )
 
+  const updateBudgetStatus = useCallback(
+    (id, status) =>
+      updateAndRefreshBudgetStatus(
+        budgetService.updateBudgetStatus,
+        refreshBudgets,
+        id,
+        status,
+      ),
+    [refreshBudgets],
+  )
+
   const removeBudget = useCallback(
     async (id) => {
       await budgetService.deleteBudget(id)
@@ -81,6 +103,7 @@ function useBudgets(enabled = true) {
     refreshBudgets,
     removeBudget,
     saveNewBudget,
+    updateBudgetStatus,
   }
 }
 

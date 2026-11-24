@@ -28,7 +28,7 @@ describe('branding', () => {
   })
 
   it('importa logos validos del proyecto', () => {
-    expect(LOGO_HORIZONTAL).toContain('priteca-logo-horizontal')
+    expect(LOGO_HORIZONTAL).toContain('PRITECA_logo_OEPM')
     expect(LOGO_ISOTYPE).toContain('priteca-isotipo')
     expect(assetExists(LOGO_HORIZONTAL)).toBe(true)
     expect(assetExists(LOGO_ISOTYPE)).toBe(true)
